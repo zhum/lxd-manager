@@ -55,6 +55,18 @@ module LXD
     end
 
     #
+    # Send data with PUT method and get answer
+    #
+    # @param [String] path path
+    # @param [String] data data to send (json format)
+    #
+    # @return [Bool] true if success
+    #
+    def put(path, data)
+      send_data(path, data, 'PUT')
+    end
+
+    #
     # Read and parse to json answer from socket
     #
     #

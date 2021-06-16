@@ -1,12 +1,12 @@
 #!/usr/bin/env ruby
 # frozen_string_literal: true
 
-require 'lxd-manager'
+require "#{File.dirname(__FILE__)}/lib/lxd-manager"
 require 'optparse'
 require 'yaml'
 
 DEF_CONF = '/root/ssl-sites.yml'.freeze
-LOG  = '/tmp/manage-site.log'.freeze
+LOG  = "/tmp/manage-site-#{ENV['USER']}.log".freeze
 
 # load config
 data = YAML.safe_load(ARGV[0] || DEF_CONF)
@@ -20,8 +20,8 @@ c = LXD::Container.new(
   profiles: ['disk-data0', 'net-intranet']
 )
 
-m = LXD::Manager.new
-answer = m.profiles
+ m = LXD::Manager.new
+# answer = m.profiles
 # pp(answer)
 
 # pp m.new_container(
@@ -30,13 +30,19 @@ answer = m.profiles
 #   source: { type: 'none' }
 #   )
 
-image = m.fingerprint_by_imagename('a1')
-pp image
+# image = m.fingerprint_by_imagename('a1')
+# pp image
 # exit 0
-pp m.new_container(
-  profiles: ['disk-local'],
-  name: 'test12',
-  source: { type: 'image', protocol: 'simplestreams', fingerprint: image }
-)
+# pp m.new_container(
+#   profiles: ['disk-local'],
+#   name: 'test12',
+#   source: { type: 'image', protocol: 'simplestreams', fingerprint: image }
+# )
 
-pp m.container 'test12'
+# pp m.container 'test12'
+pp m.container_state 'test12'
+print "----\n"
+# stop, start, restart, freeze or unfreeze
+pp m.update_state 'test12', {action: 'start', timeout: 10}.to_json
+print "----\n"
+pp m.container_state 'test12'

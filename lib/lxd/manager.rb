@@ -168,16 +168,30 @@ module LXD
       true
     end
 
+    #####################################################################
+    #####################################################################
     #
-    # Get all containers
+    # Get all profiles
     #
     #
-    # @return [Json] just LXD answer
+    # @return [Array] list of profile names
     #
-    def containers
-      lxd.get('/1.0/containers')
+    def profiles
+      lxd.get('/1.0/profiles')['metadata']
     end
 
+    #
+    # Get one profile details
+    #
+    #
+    # @return [Json|nil] profile details
+    #
+    def profile(name)
+      lxd.get("/1.0/profiles/#{name}")['metadata']
+    end
+
+    #####################################################################
+    #####################################################################
     #
     # Get all images
     #
@@ -185,7 +199,7 @@ module LXD
     # @return [Json] just LXD answer
     #
     def images
-      lxd.get('/1.0/images')
+      lxd.get('/1.0/images')['metadata']
     end
 
     #
@@ -196,7 +210,48 @@ module LXD
     # @return [Json] just LXD answer
     #
     def image(fingerprint)
+      lxd.get("/1.0/images/#{fingerprint}")['metadata']
+    end
+
+    #
+    # Get image by fingerprint
+    #
+    #
+    # @return [Json] just LXD answer
+    #
+    def image_by_fingerprint(fingerprint)
       lxd.get("/1.0/images/#{fingerprint}")
+    end
+
+    #
+    # get fingerprint of named image
+    #
+    # @param [String] name name of image
+    #
+    # @return [String|nil] fingerprint if found
+    #
+    def fingerprint_by_imagename(name)
+      images.each do |f|
+        fp = f.split('/').last
+        im = image(fp)
+        # warn im
+        next unless im && im['aliases']
+        im['aliases'].each { |e| return fp if e['name'] == name }
+        return fp if im['update_source'] &&
+                     im['update_source']['alias'] == name
+      end
+      nil
+    end
+    #####################################################################
+    #####################################################################
+    #
+    # Get all containers
+    #
+    #
+    # @return [Json] just LXD answer
+    #
+    def containers
+      lxd.get('/1.0/containers')['metadata']
     end
 
     #
@@ -243,44 +298,20 @@ module LXD
       end
     end
 
+    # Get container state
     #
-    # Get all profiles
+    # @param [String] name container name
     #
+    # @return [Hash] state
     #
-    # @return [Json] just LXD answer
-    #
-    def profiles
-      lxd.get('/1.0/profiles')
+    def container_state(name)
+      c = lxd.get("/1.0/containers/#{name}/state")
+      c['metadata']
     end
 
-    #
-    # Get image by fingerprint
-    #
-    #
-    # @return [Json] just LXD answer
-    #
-    def image_by_fingerprint(fingerprint)
-      lxd.get("/1.0/images/#{fingerprint}")
-    end
-
-    #
-    # get fingerprint of named image
-    #
-    # @param [String] name name of image
-    #
-    # @return [String|nil] fingerprint if found
-    #
-    def fingerprint_by_imagename(name)
-      images['metadata'].each do |f|
-        fp = f.split('/').last
-        im = image(fp)
-        # warn im
-        next unless im['metadata'] && im['metadata']['aliases']
-        im['metadata']['aliases'].each { |e| return fp if e['name'] == name }
-        return fp if im['metadata']['update_source'] &&
-                     im['metadata']['update_source']['alias'] == name
-      end
-      nil
+    def update_state(name, data = nil)
+      return false unless data
+      c = lxd.put("/1.0/containers/#{name}/state", data)
     end
   end
 end

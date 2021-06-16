@@ -37,6 +37,5 @@ module LXD
       @profiles = args[:profiles] || m['profiles']
       @image_fingerprint = args[:image_fingerprint]
     end
-
   end
 end

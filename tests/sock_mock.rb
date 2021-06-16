@@ -5,25 +5,24 @@ require 'socket'
 # @author serg
 #
 class SockMock
-  IMAGES = <<_IMAGES.freeze
+  HEADER = <<_HEADER.freeze
 "type": "sync",
 "status": "Success",
 "status_code": 200,
 "operation": "",
 "error_code": 0,
 "error": "",
+_HEADER
+
+  IMAGES = <<_IMAGES.freeze
+#{HEADER}
 "metadata": [
 "/1.0/images/1234567890qwertyuiopasdfghjklzxcvbnmqweqweqweqweqweqweqweqweqweq",
 "/1.0/images/qqqqqqqqqqqqqqqwwwwwwwwwwwwwwwwwweeeeeeeeeeeeeerrrrrrrrrrrr11111"
 ]
 _IMAGES
   CONTS = <<_CONTS.freeze
-"type": "sync",
-"status": "Success",
-"status_code": 200,
-"operation": "",
-"error_code": 0,
-"error": "",
+#{HEADER}
 "metadata": [
 "/1.0/containers/test1",
 "/1.0/containers/cont2",
@@ -31,12 +30,7 @@ _IMAGES
 ]
 _CONTS
   PROFILES = <<_PROFS.freeze
-"type": "sync",
-"status": "Success",
-"status_code": 200,
-"operation": "",
-"error_code": 0,
-"error": "",
+#{HEADER}
 "metadata": [
 "/1.0/profiles/prof1",
 "/1.0/profiles/prof2",
@@ -45,12 +39,7 @@ _CONTS
 _PROFS
 
   CONT = <<_CONT
-"type": "sync",
-"status": "Success",
-"status_code": 200,
-"operation": "",
-"error_code": 0,
-"error": "",
+#{HEADER}
 "metadata": {
   "architecture": "x86_64",
   "config": {
@@ -84,12 +73,7 @@ _PROFS
 _CONT
 
   CONT_CREATE = <<_CCREATE
-"type": "sync",
-"status": "Success",
-"status_code": 200,
-"operation": "",
-"error_code": 0,
-"error": "",
+#{HEADER}
 "metadata": {
   "id": "46320db5-4c2c-4ea4-8f26-b3998bb74280",
   "class": "task",

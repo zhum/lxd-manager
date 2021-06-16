@@ -1,18 +1,7 @@
 $VERBOSE = nil
 require 'minitest/autorun'
-# require 'minitest/display'
 
-# MiniTest::Display.options = {
-#   suite_names: true,
-#   color: true,
-#   print: {
-#     success: 'OK ',
-#     failure: 'FAIL ',
-#     error: 'ERR!! '
-#   }
-# }
-
-require 'lxd-manager'
+require './lib/lxd-manager'
 require './tests/sock_mock.rb'
 
 SOCK = '/tmp/lxd-manager-test.sock'.freeze
@@ -28,33 +17,13 @@ describe LXD::Manager do
     @mock.stop
   end
 
-  describe 'get list of images' do
-    it 'should return array of images' do
-      _(@m.images['metadata']).must_be_kind_of Array
-    end
-
-    it 'should return images list' do
-      _(@m.images['metadata'].size).must_equal 2
-    end
-  end
-
   describe 'get list of containers' do
     it 'should return array of containers' do
-      _(@m.containers['metadata']).must_be_kind_of Array
+      _(@m.containers).must_be_kind_of Array
     end
 
     it 'should return containers list' do
-      _(@m.containers['metadata'].size).must_equal 3
-    end
-  end
-
-  describe 'get list of profiles' do
-    it 'should return array of profiles' do
-      _(@m.profiles['metadata']).must_be_kind_of Array
-    end
-
-    it 'should return profiles list' do
-      _(@m.profiles['metadata'].size).must_equal 3
+      _(@m.containers.size).must_equal 3
     end
   end
 
@@ -62,10 +31,7 @@ describe LXD::Manager do
     it 'should get contaner by name' do
       @c = @m.container('test2')
       _(@c).must_be_kind_of LXD::Container
-    # end
 
-    # it 'should match container name' do
-    #   @c = @m.container('test2')
       _(@c.lxd['metadata']['name']).must_equal 'test2'
       _(@c.name).must_equal 'test2'
     end
