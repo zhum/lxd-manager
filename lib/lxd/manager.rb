@@ -6,6 +6,7 @@ require 'json'
 module LXD
   #
   # Class LXD::Manager provides creation/updateing/deleting sites
+  # Example
   #
   # @author Sergey Zhumatiy <serg@parallel.ru>
   #
@@ -28,7 +29,7 @@ module LXD
     attr_reader :nginx
     #
     # @!attribute [r] nginx_tpl
-    #   @return [String] path to ngix site template [/wtc/nginx/site-template]
+    #   @return [String] path to ngix site template [/etc/nginx/site-template]
     attr_reader :nginx_tpl
     #
     # @!attribute [rw] last_port
@@ -36,20 +37,33 @@ module LXD
     attr_accessor :last_port
     #
     # @!attribute [r] lxd_socket
-    #   @return [String] path to lxd socket [/var/snap/lxd/common/lxd/unix.socket]
+    #   @return [String] path to lxd socket
+    #                    [/var/snap/lxd/common/lxd/unix.socket]
     attr_reader :lxd_socket
 
-    def initialize(args={})
-      @acme       = args[:acme] || '/root/.acme.sh'
-      @xinetd     = args[:xinetd] || '/etc/xinetd.d'
-      @xinetd_tpl = args[:xinetd_tpl] || '/etc/xinetd_ssh_template'
-      @nginx      = args[:nginx] || '/etc/nginx'
-      @nginx_tpl  = args[:nginx_tpl] || '/etc/nginx/site-template'
-      @last_port  = (args[:last_port] || 22222).to_i
-      @lxd_socket = args[:lxd_socket] || '/var/snap/lxd/common/lxd/unix.socket'
-      @debug      = args[:debug]
+    DEFS = {
+      acme: '/root/.acme.sh',
+      xinetd: '/etc/xinetd.d',
+      xinetd_tpl: '/etc/xinetd_ssh_template',
+      nginx: '/etc/nginx',
+      nginx_tpl: '/etc/nginx/site-template',
+      last_port: 22_222,
+      lxd_socket: '/var/snap/lxd/common/lxd/unix.socket',
+      debug: nil
+    }.freeze
+
+    #
+    # Constructor
+    #
+    # @param [Hash] args <description>
+    #
+    def initialize(args = {})
+      DEFS.each do |key, value|
+        value = args[key] if args[key]
+        instance_variable_set("@#{key}", value)
+      end
     end
-    
+
     def lxd
       @lxd ||= LXD::Socket.new(socket: @lxd_socket, debug: @debug)
     end
@@ -57,21 +71,19 @@ module LXD
     #
     # Created new site configs
     #
-    # @param [String] site   Site name
+    # @param [String] host   Site name
+    # @param [String] cont   Container object (definition)
     #
     # @return [Bool] true if site configs created
     #
     def create_configs(host, cont)
       ok = create_nginx_conf(host, cont)
-      if ok
-        ok = create_xinetd_conf(host, cont)
-      end
-      if ok
-        ok = create_lxd_vm(host, cont)
-      end
+
+      ok = create_xinetd_conf(host, cont) if ok
+      ok = create_lxd_vm(host, cont) if ok
       ok
     end
-    
+
     #
     #
     # Renrew ssl certificate for site
@@ -94,29 +106,35 @@ module LXD
       system "#{@acme}/acme.sh --issue -d #{host} >> #{LOG}"
     end
 
-    def create_lxd_vm(host, cont)
+    #
+    # Creates a new container via LXC API
+    #
+    # @param [String] cont Container description
+    #
+    # @return [Json] LXD answer
+    #
+    def create_lxd_vm(cont)
       json = {
         name: cont.name,
         source: {
-          type: "image",
-          protocol: "simplestreams",
-          fingerprint: "#{cont.image_fingerprint}"
+          type: 'image',
+          protocol: 'simplestreams',
+          fingerprint: cont.image_fingerprint
         },
         profiles: cont.profiles
       }
-      #json = URI.encode_www_form(json.to_json)
+      # json = URI.encode_www_form(json.to_json)
       json = json.to_json
 
       # warn ">> #{json}"
       answer = lxd.post(json, '/1.0/containers')
-
+      answer
       # warn answer
     end
 
     #
     #  Create NGINX site config
-    #  
-    #  
+    #
     #  @return [bool]  true if created, false  if failed or already exists
     #
     def create_nginx_conf(host, cont)
@@ -126,16 +144,13 @@ module LXD
       template = File.read(@nginx_tpl)
       template.gsub! '{host}', host
       template.gsub! '{local_ip}', cont.local_ip
-      File.open(conf, 'w'){|f|
-        f.print template
-      }
+      File.open(conf, 'w') { |f| f.print template }
       true
     end
 
     #
     #  Create xinetd ssh forward config
-    #  
-    #  
+    #
     #  @return [bool]  true if created, false  if failed or already exists
     #
     def create_xinetd_conf(host, cont)
@@ -147,23 +162,125 @@ module LXD
       template.gsub! '{cont}', cont
       template.gsub! '{port}', @last_port
       @last_port += 1
-      File.open(conf, 'w'){|f|
+      File.open(conf, 'w') do |f|
         f.print template
-      }
+      end
       true
     end
 
-
-    def get_containers
+    #
+    # Get all containers
+    #
+    #
+    # @return [Json] just LXD answer
+    #
+    def containers
       lxd.get('/1.0/containers')
     end
 
-    def get_images
+    #
+    # Get all images
+    #
+    #
+    # @return [Json] just LXD answer
+    #
+    def images
       lxd.get('/1.0/images')
     end
 
-    def get_image fingerprint
+    #
+    # Get image by fingerprint
+    #
+    # @param [String] fingerprint
+    #
+    # @return [Json] just LXD answer
+    #
+    def image(fingerprint)
       lxd.get("/1.0/images/#{fingerprint}")
+    end
+
+    #
+    # Get container by name
+    #
+    #
+    # @return [LXD::Container] container descriprion
+    #
+    def container(name)
+      c = lxd.get("/1.0/containers/#{name}")
+      if c.empty?
+        nil
+      else
+        LXD::Container.new(c)
+      end
+    end
+
+    #
+    # Create new container
+    #
+    # @param  [LXD::Container] cont  container description
+    #
+    # @return [Bool] true if container was created
+    #
+    def new_container(cont)
+      # data = {
+      #   name: name,                            # 64 chars max, ASCII, no slash, no colon and no comma
+      #   # architecture: 'x86_64',
+      #   profiles: ['default'],                 # List of profiles
+      #   ephemeral: true,                       # Whether to destroy the container on shutdown
+      #   config: { :'limits.cpu' => '2' },      # Config override.
+      #   devices: {                             # optional list of devices the container should have
+      #   },
+      #   source: {
+      #     type: 'image',                       # Can be: 'image', 'migration', 'copy' or 'none'
+      #     fingerprint: 'SHA-256'               # Fingerprint
+      #   }
+      # }
+      c = lxd.post("/1.0/containers", cont.to_json)
+      if c.empty?
+        false
+      else
+        c['metadata']['status_code'].to_i < 400
+      end
+    end
+
+    #
+    # Get all profiles
+    #
+    #
+    # @return [Json] just LXD answer
+    #
+    def profiles
+      lxd.get('/1.0/profiles')
+    end
+
+    #
+    # Get image by fingerprint
+    #
+    #
+    # @return [Json] just LXD answer
+    #
+    def image_by_fingerprint(fingerprint)
+      lxd.get("/1.0/images/#{fingerprint}")
+    end
+
+    #
+    # get fingerprint of named image
+    #
+    # @param [String] name name of image
+    #
+    # @return [String|nil] fingerprint if found
+    #
+    def fingerprint_by_imagename(name)
+      images['metadata'].each do |f|
+        fp = f.split('/').last
+        im = image(fp)
+        # warn im
+        next unless im['metadata'] && im['metadata']['aliases']
+        im['metadata']['aliases'].each { |e| return fp if e['name'] == name }
+        return fp if im['metadata']['update_source'] &&
+                     im['metadata']['update_source']['alias'] == name
+      end
+      nil
     end
   end
 end

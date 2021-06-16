@@ -1,6 +1,5 @@
 # frozen_string_literal: true
 
-#require 'json'
 require 'socket'
 
 module LXD
@@ -10,7 +9,6 @@ module LXD
   # @author Sergey Zhumatiy <serg@parallel.ru>
   #
   class Socket
-
     #
     # @!attribute [r] socket
     #   @return [String] path to socket
@@ -24,20 +22,18 @@ module LXD
     #
     # Constructor
     #
-    # @param [Hash] args
-    #               :socket - path to socket [/var/snap/lxd/common/lxd/unix.socket]
+    # socket::  path to socket [/var/snap/lxd/common/lxd/unix.socket]
     #
     def initialize(args={})
-      #warn "--- #{args}"
+      # warn "--- #{args}"
       @socket = args[:socket] || '/var/snap/lxd/common/lxd/unix.socket'
       @debug = args[:debug]
       @conn = nil
     end
-    
+
     #
     # Send data with GET method and get answer
     #
-    # @param [String] data data to send (json format)
     # @param [String] path path
     #
     # @return [Bool] true if success
