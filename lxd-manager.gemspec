@@ -1,6 +1,6 @@
 Gem::Specification.new do |s|
   s.name        = 'lxd-manager'
-  s.version     = '0.1.3'
+  s.version     = '0.1.4'
   s.summary     = 'LXD manager'
   s.description = 'Provides simple communication with local LXD server'
   s.authors     = ['Sergey Zhumatiyt']
