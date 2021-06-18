@@ -300,9 +300,10 @@ module LXD
       #     fingerprint: 'SHA-256'               # Fingerprint
       #   }
       # }
+      # warn "--> #{cont.to_json}"
       c = lxd.post('/1.0/containers', cont.to_json)
-      warn "c = #{c}"
-      if c.empty?
+      # warn "c = #{c}"
+      if c.empty? || c['original_status'].to_i >= 400
         nil
       elsif c['metadata']['status_code'].to_i < 400
         LXD::Container.new(c)
