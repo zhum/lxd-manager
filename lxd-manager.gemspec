@@ -10,7 +10,6 @@ Gem::Specification.new do |s|
   s.license     = 'MIT'
 
   s.add_dependency('json')
-  s.add_dependency('socket')
 
   s.add_development_dependency('yard')
 end

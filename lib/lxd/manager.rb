@@ -22,6 +22,7 @@ module LXD
     #
     # @!attribute [r] xinetd_tpl
     #   @return [String] path to xinetd service template
+    #                    [/etc/xinetd_ssh_template]
     attr_reader :xinetd_tpl
     #
     # @!attribute [r] nginx
@@ -31,10 +32,6 @@ module LXD
     # @!attribute [r] nginx_tpl
     #   @return [String] path to ngix site template [/etc/nginx/site-template]
     attr_reader :nginx_tpl
-    #
-    # @!attribute [rw] last_port
-    #   @return [Integer] last used port for ssh forwarfing
-    attr_accessor :last_port
     #
     # @!attribute [r] lxd_socket
     #   @return [String] path to lxd socket
@@ -64,6 +61,11 @@ module LXD
       end
     end
 
+    # Return current lxd connector
+    #
+    #
+    # @return [LXD::Socket] lxd connector
+    #
     def lxd
       @lxd ||= LXD::Socket.new(socket: @lxd_socket, debug: @debug)
     end
@@ -74,14 +76,20 @@ module LXD
     # @param [String] host   Site name
     # @param [String] cont   Container object (definition)
     #
-    # @return [Bool] true if site configs created
+    # @return [Bool, String] true and 'ok' if site configs created
+    #                        false and fail reason on fail
     #
     def create_configs(host, cont)
-      ok = create_nginx_conf(host, cont)
+      unless create_nginx_conf(host, cont)
+        return [false, 'Cannot create nginx config']
+      end
 
-      ok = create_xinetd_conf(host, cont) if ok
-      ok = create_lxd_vm(host, cont) if ok
-      ok
+      unless create_xinetd_conf(host, cont)
+        return [false, 'Cannot create xinetd config']
+      end
+      return [false, 'Cannot create vm'] unless create_lxd_vm(cont)
+
+      [true, 'ok']
     end
 
     #
@@ -155,12 +163,14 @@ module LXD
     #
     def create_xinetd_conf(host, cont)
       conf = "#{@xinetd}/#{host}.conf"
+      warn "xinetd cont = #{conf}"
       return false if File.file? conf
 
+      warn "lp = #{@last_port}"
       template = File.read(@xinetd_tpl)
       template.gsub! '{host}', host
-      template.gsub! '{cont}', cont
-      template.gsub! '{port}', @last_port
+      template.gsub! '{local_ip}', cont.local_ip
+      template.gsub! '{port}', @last_port.to_s
       @last_port += 1
       File.open(conf, 'w') do |f|
         f.print template
@@ -272,9 +282,9 @@ module LXD
     #
     # Create new container
     #
-    # @param  [LXD::Container] cont  container description
+    # @param  [Hash|JSON] cont  container description
     #
-    # @return [Bool] true if container was created
+    # @return [LXD::Container|nil] new container or nil
     #
     def new_container(cont)
       # data = {
@@ -290,11 +300,13 @@ module LXD
       #     fingerprint: 'SHA-256'               # Fingerprint
       #   }
       # }
-      c = lxd.post("/1.0/containers", cont.to_json)
+      c = lxd.post('/1.0/containers', cont.to_json)
       if c.empty?
-        false
+        nil
+      elsif c['metadata']['status_code'].to_i < 400
+        LXD::Container.new(c)
       else
-        c['metadata']['status_code'].to_i < 400
+        nil
       end
     end
 
@@ -311,7 +323,7 @@ module LXD
 
     def update_state(name, data = nil)
       return false unless data
-      c = lxd.put("/1.0/containers/#{name}/state", data)
+      c = lxd.put("/1.0/containers/#{name}/state", data.to_json)
     end
   end
 end
