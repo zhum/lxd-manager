@@ -301,6 +301,7 @@ module LXD
       #   }
       # }
       c = lxd.post('/1.0/containers', cont.to_json)
+      warn "c = #{c}"
       if c.empty?
         nil
       elsif c['metadata']['status_code'].to_i < 400
