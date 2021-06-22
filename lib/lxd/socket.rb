@@ -70,13 +70,17 @@ module LXD
     # Read and parse to json answer from socket
     #
     #
-    # @return [Hash] answer in JSON format
+    # @return [Hash] answer from LXD server
+    #                If fail, return {status: 999, original_status: status,
+    #                length: result_len, headers: [response headers array]}
     #
     def get_answer
       status = nil
       length = nil
+      headers = []
       loop do
         answer = @conn.readline.chomp
+        headers << answer
         warn "<< #{answer}" if @debug
         case answer
         when /HTTP\/[0-9.]+ (\d+)/
@@ -90,7 +94,12 @@ module LXD
 
       length = length.to_i
       @status = status.to_i
-      return {status: 999, original_status: @status, length: length}.to_json if @status < 1 or @status > 399
+      return {
+        status: 999,
+        original_status: @status,
+        length: length,
+        headers: headers
+      }.to_json if @status < 1 or @status > 399
       JSON.load(@conn.read(length))
     end
 
@@ -101,7 +110,7 @@ module LXD
     # @param [String] data JSON formatted data to send
     # @param [String] method GET/POST/PUT/...
     #
-    # @return [String] answer in JSON format or nil if failed
+    # @return [String] answer in JSON format
     #
     def send_data(path, data, method)
       if @conn.nil? || @conn.closed?
@@ -134,6 +143,10 @@ SEND_DATA
       answer
     end
 
+    # Send request for async operation wait and get answer
+    #
+    # @return [Hash] answer form LXD
+    #
     def wait_operation op
       @conn.close if @conn && !@conn.closed?
       @conn = UNIXSocket.new(@socket)

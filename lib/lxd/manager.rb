@@ -11,6 +11,11 @@ module LXD
   # @author Sergey Zhumatiy <serg@parallel.ru>
   #
   class Manager
+
+    #
+    # @!attribute [r] err
+    #   @return [Hash|nil] last error descripton
+    attr_reader :err
     #
     # @!attribute [r] acme
     #   @return [String] acme.sh directory [/root/.acme.sh]
@@ -79,12 +84,12 @@ module LXD
     # @return [Bool, String] true and 'ok' if site configs created
     #                        false and fail reason on fail
     #
-    def create_configs(host, cont)
-      unless create_nginx_conf(host, cont)
+    def create_configs(host, cont, domain = nil)
+      unless create_nginx_conf(host, cont, domain)
         return [false, 'Cannot create nginx config']
       end
 
-      unless create_xinetd_conf(host, cont)
+      unless create_xinetd_conf(host, cont, domain)
         return [false, 'Cannot create xinetd config']
       end
       return [false, 'Cannot create vm'] unless create_lxd_vm(cont)
@@ -145,12 +150,13 @@ module LXD
     #
     #  @return [bool]  true if created, false  if failed or already exists
     #
-    def create_nginx_conf(host, cont)
+    def create_nginx_conf(host, cont, fullhost = nil)
       conf = "#{@nginx}/sites-available/#{host}.conf"
       return false if File.file? conf
 
       template = File.read(@nginx_tpl)
       template.gsub! '{host}', host
+      template.gsub! '{fullhost}', (fullhost || host)
       template.gsub! '{local_ip}', cont.local_ip
       File.open(conf, 'w') { |f| f.print template }
       true
@@ -161,14 +167,15 @@ module LXD
     #
     #  @return [bool]  true if created, false  if failed or already exists
     #
-    def create_xinetd_conf(host, cont)
-      conf = "#{@xinetd}/#{host}.conf"
+    def create_xinetd_conf(host, cont, fullhost = nil)
+      conf = "#{@xinetd}/ssh_#{host}"
       warn "xinetd cont = #{conf}"
       return false if File.file? conf
 
       warn "lp = #{@last_port}"
       template = File.read(@xinetd_tpl)
       template.gsub! '{host}', host
+      template.gsub! '{fullhost}', (fullhost || host)
       template.gsub! '{local_ip}', cont.local_ip
       template.gsub! '{port}', @last_port.to_s
       @last_port += 1
@@ -303,11 +310,13 @@ module LXD
       # warn "--> #{cont.to_json}"
       c = lxd.post('/1.0/containers', cont.to_json)
       # warn "c = #{c}"
-      if c.empty? || c['original_status'].to_i >= 400
+      if c.nil? || c.empty? || c['original_status'].to_i >= 400
+        @err = c
         nil
-      elsif c['metadata']['status_code'].to_i < 400
+      elsif c['metadata'] && c['metadata']['status_code'].to_i < 400
         LXD::Container.new(c)
       else
+        @err = c
         nil
       end
     end
@@ -323,8 +332,18 @@ module LXD
       c['metadata']
     end
 
+    # Change state of a container by name
+    #
+    # @param [String] name container name
+    # @param [Hash] data new state description
+    #
+    # Example:
+    #   m.update_state 'my_container', action: 'start'
+    #   
+    # @return [Hash|false] New state description or nil
+    #
     def update_state(name, data = nil)
-      return false unless data
+      return nil unless data
       c = lxd.put("/1.0/containers/#{name}/state", data.to_json)
     end
   end

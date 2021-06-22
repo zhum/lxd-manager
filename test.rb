@@ -5,14 +5,14 @@ require "#{File.dirname(__FILE__)}/lib/lxd-manager"
 require 'optparse'
 require 'yaml'
 
-DEF_CONF = '/root/ssl-sites.yml'.freeze
-LOG = "/tmp/manage-site-#{ENV['USER']}.log".freeze
+#DEF_CONF = '/root/ssl-sites.yml'.freeze
+#LOG = "/tmp/manage-site-#{ENV['USER']}.log".freeze
 
 # load config
 # data = YAML.safe_load(ARGV[0] || DEF_CONF)
 
 # reset log
-File.open(LOG, 'w') { |f| }
+#File.open(LOG, 'w') { |f| }
 
 # c = LXD::Container.new(
 #   name: 'test12',
@@ -23,7 +23,7 @@ File.open(LOG, 'w') { |f| }
 m = LXD::Manager.new
 # answer = m.profiles
 # pp(answer)
-
+pp m.container_state('qwe2')
 # pp m.new_container(
 #   profiles: ['disk-local'],
 #   name: 'test11',
