@@ -188,7 +188,8 @@ module LXD
     #
     def correct_last_port
       used = `ss -lpnt -f inet | awk '{print $4}'`
-        .map { |l| l.split(':')[1]}
+        .split("\n")
+        .map { |l| l.split(':')[1].to_i}
       while used.include? @last_port
         @last_port += 1
       end
