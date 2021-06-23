@@ -67,11 +67,11 @@ module LXD
         instance_variable_set("@#{key}", value)
       end
       if File.exists? @config_path
-        opts = YAML.safe_load(@config_path)
+        opts = YAML.safe_load(File.read(@config_path))
         if opts
           opts.each do |key, value|
             value = args[key] if args[key]
-            instance_variable_set("@#{key}", value)
+            instance_variable_set("@#{key.to_s}", value)
           end
         end
       end
