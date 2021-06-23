@@ -2,6 +2,7 @@
 # frozen_string_literal: true
 
 require 'json'
+require 'yaml'
 
 module LXD
   #
@@ -51,7 +52,8 @@ module LXD
       nginx_tpl: '/etc/nginx/site-template',
       last_port: 22_222,
       lxd_socket: '/var/snap/lxd/common/lxd/unix.socket',
-      debug: nil
+      debug: nil,
+      config_path: '/root/.lxd-manager.conf'
     }.freeze
 
     #
@@ -60,10 +62,27 @@ module LXD
     # @param [Hash] args <description>
     #
     def initialize(args = {})
-      DEFS.each do |key, value|
+      DEFS.merge(args).each do |key, value|
         value = args[key] if args[key]
         instance_variable_set("@#{key}", value)
       end
+      if File.exists? @config_path
+        opts = YAML.safe_load(File.read(@config_path))
+        if opts
+          opts.each do |key, value|
+            value = args[key] if args[key]
+            instance_variable_set("@#{key.to_s}", value)
+          end
+        end
+      end
+    end
+
+    def save_conf
+      opts = Hash[ DEFS.keys.map { |k|
+          [k.to_s, instance_variable_get("@#{k.to_s}")]
+        }
+      ]
+      File.open(@config_path,'w'){|f| f.print YAML.dump opts}
     end
 
     # Return current lxd connector
@@ -162,23 +181,38 @@ module LXD
       true
     end
 
+    # Check if xinetd last port is available and find first free if not
     #
+    #
+    # @return none
+    #
+    def correct_last_port
+      used = `ss -lpnt -f inet | awk '{print $4}'`
+        .split("\n")
+        .map { |l| l.split(':')[1].to_i}
+      while used.include? @last_port
+        @last_port += 1
+      end
+    end
+
     #  Create xinetd ssh forward config
     #
     #  @return [bool]  true if created, false  if failed or already exists
     #
     def create_xinetd_conf(host, cont, fullhost = nil)
       conf = "#{@xinetd}/ssh_#{host}"
-      warn "xinetd cont = #{conf}"
+      #warn "xinetd cont = #{conf}"
       return false if File.file? conf
 
-      warn "lp = #{@last_port}"
+      #warn "lp = #{@last_port}"
+      correct_last_port
       template = File.read(@xinetd_tpl)
       template.gsub! '{host}', host
       template.gsub! '{fullhost}', (fullhost || host)
       template.gsub! '{local_ip}', cont.local_ip
       template.gsub! '{port}', @last_port.to_s
       @last_port += 1
+      save_conf
       File.open(conf, 'w') do |f|
         f.print template
       end
