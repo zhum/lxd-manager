@@ -69,8 +69,9 @@ module LXD
         opts = YAML.safe_load(@config_path)
         if opts
           opts.each do |key, value|
-          value = args[key] if args[key]
-          instance_variable_set("@#{key}", value)
+            value = args[key] if args[key]
+            instance_variable_set("@#{key}", value)
+          end
         end
       end
     end
