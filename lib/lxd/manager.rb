@@ -51,7 +51,8 @@ module LXD
       nginx_tpl: '/etc/nginx/site-template',
       last_port: 22_222,
       lxd_socket: '/var/snap/lxd/common/lxd/unix.socket',
-      debug: nil
+      debug: nil,
+      config_path: '/root/.lxd-manager.conf'
     }.freeze
 
     #
@@ -60,12 +61,24 @@ module LXD
     # @param [Hash] args <description>
     #
     def initialize(args = {})
-      DEFS.each do |key, value|
+      DEFS.merge(args).each do |key, value|
         value = args[key] if args[key]
         instance_variable_set("@#{key}", value)
       end
+      if File.exists? @config_path
+        opts = YAML.safe_load(@config_path)
+        if opts
+          opts.each do |key, value|
+          value = args[key] if args[key]
+          instance_variable_set("@#{key}", value)
+        end
+      end
     end
 
+    def save_conf
+      opts = Hash[DEFS.keys.map{|k| [k => instance_variable_get(k)]}]
+      File.open(@config_path,'w'){|f| f.print YAML.dump opts}
+    end
     # Return current lxd connector
     #
     #
@@ -179,6 +192,7 @@ module LXD
       template.gsub! '{local_ip}', cont.local_ip
       template.gsub! '{port}', @last_port.to_s
       @last_port += 1
+      save_conf
       File.open(conf, 'w') do |f|
         f.print template
       end
