@@ -4,6 +4,7 @@
 require_relative 'lxd/container'
 require_relative 'lxd/socket'
 require_relative 'lxd/manager'
+require_relative 'lxd/version'
 
 #
 # Module LXD provides LXD API helper

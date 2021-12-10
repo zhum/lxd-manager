@@ -1,0 +1,238 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# require "#{File.dirname(__FILE__)}/lib/lxd-manager"
+require 'lxd-manager'
+require 'optparse'
+
+# LOG = "/tmp/manage-site-#{ENV['USER']}.log".freeze
+
+def print_help(parser, subcommands)
+  print parser.to_s
+  subcommands.each_key { |k| print subcommands[k].to_s }
+end
+
+class OptionParser
+  # Like order!, but leave any unrecognized --switches alone
+  def order_recognized!(args)
+    extra_opts = []
+    begin
+      order!(args) { |a| extra_opts << a }
+    rescue OptionParser::InvalidOption => e
+      extra_opts << e.args[0]
+      retry
+    end
+    extra_opts
+  end
+end
+
+########################################################################
+#
+#  Parse options
+#
+opts = {}
+
+subcommands = {
+  'add' => OptionParser.new do |parser|
+    parser.on(
+      '-i', '--image=IMAGE', String,
+      'Image name or alias. If no image supplied, empry vm will be created'
+    )
+    parser.on('-p', '--profiles=PROF', Array, 'Profiles list via comma')
+    parser.on('-n', '--no-network', 'Do not forward network')
+    parser.on(
+      '-d', '--domain=DOMAIN', String, 'Use this internet domain with name'
+    )
+    parser.on('-f', '--forward-only', 'Forward network into existing container')
+    parser.banner = "\nadd [options] container_name"
+  end,
+  'del' => OptionParser.new do |parser|
+    parser.banner = "\ndel container_name"
+  end,
+  'list' => OptionParser.new do |parser|
+    parser.on('-c', '--csv', 'Use csv output')
+    parser.banner = "\nlist [options]"
+  end
+}
+parser = OptionParser.new do |p|
+  p.on('-v', '--verbose', 'Show more info')
+  p.on('-h', '--help')
+end
+
+parser.banner =
+  "Usage: #{$PROGRAM_NAME} {add|list} [options]"
+
+args = parser.order_recognized!(into: opts)
+# warn args
+mode = args.shift
+if !subcommands.keys.include?(mode) || opts[:help]
+  print_help parser, subcommands
+  exit 0
+end
+
+warn "MODE: #{mode}"
+
+subcommands[mode].parse!(args, into: opts)
+warn "ARGS: #{args.inspect}"
+
+profiles = opts[:profiles] || ['default']
+image_name = opts[:image]
+forward_only = opts[:'forward-only']
+no_net = opts[:'no-network']
+domain = opts[:domain]
+verbose = opts[:verbose]
+
+name = args[0]
+if name.nil?
+  print_help parser, subcommands
+  exit 1
+end
+
+#
+# @brief      This class describes lxd commands.
+#
+class LXDCommands
+  #
+  # @brief      Contrsuctor
+  #
+  # @param      args  Hash of args:
+  #             - :mode  type of command (:add, :del, :list)
+  #
+  def initialize(args)
+    @mode = args[:mode]
+    @verbose = args[:verbose]
+  end
+
+  ##
+  ## @brief      create a VM
+  ##
+  ## @param      name  VM name
+  ## @param      opts  The options
+  ##
+  def add # (name, opts)
+    warn 'unimplemented'
+  end
+
+  ##
+  ## @brief      Connect to LXD
+  ##
+  ## @return     nothing
+  ##
+  def start
+    @lxd = LXD::Manager.new
+    fail('Cannot connect to lxd') if @lxd.nil?
+  end
+
+  def start_container(name)
+    state = @lxd.container_state(name)
+    if state.nil? || state['status_code'] != 103
+      if !@lxd.update_state name, action: 'start'
+        fail('Cannot start a container')
+      end
+    end
+  end
+
+  def make_src(name)
+    @src = if name.to_s == ''
+             { type: 'none' }
+           else
+             img = @lxd.fingerprint_by_imagename(name)
+             { type: 'image', protocol: 'simplestreams', fingerprint: img }
+           end
+  end
+
+  ##
+  ## @brief      Gets the or creates a container
+  ##
+  ## @param      name  The containername
+  ##
+  def get_or_create(name, forward_only, profiles)
+    if forward_only
+      state = @lxd.container_state(name)
+      fail "Cannot find container #{name}" if state.nil?
+      # create container description by current state
+      LXD::Container.new(state)
+    else
+      src = make_src(name)
+      @lxd.new_container(
+        profiles: profiles,
+        name: name,
+        source: make_src(src)
+      )
+    end
+  end
+
+  def get_container_ip(name)
+    st = nil
+    loop do
+      st = @lxd.container_state(name)
+      break if st['network'] &&
+               st['network']['eth0'] &&
+               !st['network']['eth0']['addresses'].empty? &&
+               st['network']['eth0']['addresses'].any? { |x| x['family'] == 'inet' }
+      sleep 0.2
+    end
+    addr = st['network']['eth0']['addresses'].select { |x| x['family'] == 'inet' }
+    fail('Cannot find any ipv4 address on eth0') if addr.empty?
+    addr[0]['address']
+  end
+
+  ##
+  ## @brief      Get a LXD last error
+  ##
+  ## @return     Last error value
+  ##
+  def err
+    @lxd.err
+  end
+
+  ##
+  ## @brief      Print the message and exit
+  ##
+  ## @param      txt   The text
+  ##
+  def fail(txt)
+    warn txt
+    exit 1
+  end
+
+  ##
+  ## @brief      Print the text if verbose is true
+  ##
+  ## @param      txt   The text
+  ##
+  def info(txt)
+    warn txt if @verbose
+  end
+end
+
+if mode == 'add'
+  l = LXDCommands.new(verbose: verbose)
+  l.start
+  c = l.get_or_create(name, forward_only, profiles)
+
+  fail("Cannot create container #{name} (#{l.err})") if c.nil?
+  info('Created.')
+
+  exit(0) if image_name.to_s == ''
+  info('Staring.')
+
+  exit(0) if no_net
+
+  l.start_container(name)
+  info('Started.')
+
+  local_ip = l.get_container_ip(name)
+  info("Got ip address: #{local_ip}")
+
+  c.local_ip = local_ip
+  ok, status = @lxd.create_configs(name, c, domain ? "#{name}.#{domain}" : name)
+  fail(status) unless ok
+
+  res = system('systemctl', 'restart', 'xinetd')
+  info "XINETD: #{res}\n"
+  res = system('/usr/local/sbin/nginx-modsite', '-b', '-e', "#{name}.conf")
+  info "NGINX: #{res}\n"
+  res = system('/usr/local/bin/ddns-update.sh', name)
+  info "DNS: #{res}\n"
+end

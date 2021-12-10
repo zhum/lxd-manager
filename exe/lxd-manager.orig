@@ -1,0 +1,164 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# require "#{File.dirname(__FILE__)}/lib/lxd-manager"
+require 'lxd-manager'
+require 'optparse'
+
+$verbose = false
+
+# LOG = "/tmp/manage-site-#{ENV['USER']}.log".freeze
+
+def fail(txt)
+  warn txt
+  exit 1
+end
+
+def info(txt)
+  warn txt if $verbose
+end
+
+########################################################################
+#
+#  Parse options
+#
+opts = {}
+
+subcommands = {
+  'add' => OptionParser.new do |parser|
+    parser.on(
+      '-i', '--image=IMAGE', String,
+      'Image name or alias. If no image supplied, empry vm will be created'
+    )
+    parser.on('-p', '--profiles=PROF', Array, 'Profiles list via comma')
+    parser.on('-n', '--no-network', 'Do not forward network')
+    parser.on(
+      '-d', '--domain=DOMAIN', String, 'Use this internet domain with name'
+    )
+    parser.on('-f', '--forward-only', 'Forward network into existing container')
+    parser.banner = "\nadd [options] container_name"
+  end,
+  'del' => OptionParser.new do |parser|
+    parser.banner = "\ndel container_name"
+  end,
+  'list' => OptionParser.new do |parser|
+    parser.on('-c','--csv', 'Use csv output')
+    parser.banner = "\nlist [options]"
+  end
+}
+parser = OptionParser.new do |p|
+  p.on('-v', '--verbose', 'Show more info')
+  p.on('-h', '--help')
+end
+
+parser.banner =
+  "Usage: #{$PROGRAM_NAME} {add|list} [options]"
+
+parser.parse!(into: opts)
+mode = ARGV.shift
+if !subcommands.keys.include?(mode) || opts[:help]
+  print_help parser, subcommands
+  exit 0
+end
+
+warn "MODE: #{mode}"
+
+subcommands[mode].parse!(into: opts)
+
+profiles = opts[:profiles] || ['default']
+image_name = opts[:image]
+forward_only = opts[:'forward-only']
+no_net = opts[:'no-network']
+domain = opts[:domain]
+$verbose = opts[:verbose]
+
+name = ARGV[0]
+if name.nil?
+  print_help parser, subcommands
+  exit 1
+end
+
+def print_help(parser, subcommands)
+  print parser.to_s
+  subcommands.each_key { |k| print subcommands[k].to_s }
+end
+########################################################################
+#
+#  Start LXD conversation
+#
+m = LXD::Manager.new
+fail('Cannot connect to lxd') if m.nil?
+
+src = if image_name.to_s == ''
+        { type: 'none' }
+      else
+        image = m.fingerprint_by_imagename(image_name)
+        { type: 'image', protocol: 'simplestreams', fingerprint: image }
+      end
+
+#########################################################################
+#
+#  Create or get container
+#
+state = nil
+c = nil
+if forward_only
+  state = m.container_state(name)
+  fail "Cannot find container #{name}" if state.nil?
+  c = LXD::Container.new(state)
+else
+  c = m.new_container(
+    profiles: profiles,
+    name: name,
+    source: src
+  )
+  fail("Cannot create container #{name} (#{m.err})") if c.nil?
+  info('Created.')
+  exit(0) if image_name.to_s == ''
+  info('Staring.')
+end
+
+exit(0) if no_net
+
+#########################################################################
+#
+#  Start container
+#
+if state.nil? || state['status_code'] != 103
+  if !m.update_state name, action: 'start'
+    fail('Cannot start a container')
+  end
+end
+info('Started.')
+
+#########################################################################
+#
+#  Get IP address
+#
+st = nil
+loop do
+  st = m.container_state(name)
+  #  pp st['network']
+  #  print "---------------\n"
+  break if st['network'] &&
+           st['network']['eth0'] &&
+           !st['network']['eth0']['addresses'].empty? &&
+           st['network']['eth0']['addresses'].any? { |x| x['family'] == 'inet' }
+  sleep 0.2
+end
+# pp st
+addr = st['network']['eth0']['addresses'].select { |x| x['family'] == 'inet' }
+fail('Cannot find any ipv4 address on eth0') if addr.empty?
+local_ip = addr[0]['address']
+info("Got ip address: #{addr}")
+
+c.local_ip = local_ip
+ok, status = m.create_configs(name, c, domain ? "#{name}.#{domain}" : name)
+fail(status) unless ok
+
+res = system('systemctl', 'restart', 'xinetd')
+info "XINETD: #{res}\n"
+res = system('/usr/local/sbin/nginx-modsite', '-b', '-e', "#{name}.conf")
+info "NGINX: #{res}\n"
+res = system('/usr/local/bin/ddns-update.sh', name)
+info "DNS: #{res}\n"

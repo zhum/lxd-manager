@@ -1,8 +1,8 @@
 $VERBOSE = nil
 require 'minitest/autorun'
 
-require './lib/lxd-manager'
-require './tests/sock_mock.rb'
+require 'lxd-manager'
+require './test/sock_mock'
 
 SOCK = '/tmp/lxd-manager-test.sock'.freeze
 describe LXD::Manager do
