@@ -16,9 +16,9 @@ module LXD
     #   @return [String] container name
     attr_accessor :name
     #
-    # @!attribute [r] image_fingerprint
+    # @!attribute [r] fingerprint
     #   @return [String] image fingerprint
-    attr_reader :image_fingerprint
+    attr_reader :fingerprint
     #
     # @!attribute [r] profiles
     #   @return [Array] list of LXD profile names
@@ -30,12 +30,13 @@ module LXD
     attr_reader :lxd
 
     def initialize(args = {})
+      # warn args.inspect
       m = args['metadata'] || {}
       @lxd      = args.clone
       @local_ip = args[:local_ip]
       @name     = args[:name] || m['name']
       @profiles = args[:profiles] || m['profiles']
-      @image_fingerprint = args[:image_fingerprint]
+      @fingerprint = args[:fingerprint]
     end
   end
 end

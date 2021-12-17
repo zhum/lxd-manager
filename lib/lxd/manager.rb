@@ -12,7 +12,6 @@ module LXD
   # @author Sergey Zhumatiy <serg@parallel.ru>
   #
   class Manager
-
     #
     # @!attribute [r] err
     #   @return [Hash|nil] last error descripton
@@ -53,7 +52,7 @@ module LXD
       last_port: 22_222,
       lxd_socket: '/var/snap/lxd/common/lxd/unix.socket',
       debug: nil,
-      config_path: '/root/.lxd-manager.conf'
+      config_path: '.lxd-manager.conf'
     }.freeze
 
     #
@@ -66,23 +65,24 @@ module LXD
         value = args[key] if args[key]
         instance_variable_set("@#{key}", value)
       end
-      if File.exists? @config_path
+      if File.exist? @config_path
         opts = YAML.safe_load(File.read(@config_path))
         if opts
           opts.each do |key, value|
             value = args[key] if args[key]
-            instance_variable_set("@#{key.to_s}", value)
+            instance_variable_set("@#{key}", value)
           end
         end
       end
+      @inst = args[:new_api] ? 'instances' : 'containers'
     end
 
     def save_conf
-      opts = Hash[ DEFS.keys.map { |k|
-          [k.to_s, instance_variable_get("@#{k.to_s}")]
-        }
+      opts = Hash[ DEFS.keys.map do |k|
+                     [k.to_s, instance_variable_get("@#{k}")]
+                   end
       ]
-      File.open(@config_path,'w'){|f| f.print YAML.dump opts}
+      File.open(@config_path, 'w') { |f| f.print YAML.dump opts }
     end
 
     # Return current lxd connector
@@ -151,17 +151,17 @@ module LXD
         source: {
           type: 'image',
           protocol: 'simplestreams',
-          fingerprint: cont.image_fingerprint
+          fingerprint: cont.fingerprint
         },
         profiles: cont.profiles
       }
       # json = URI.encode_www_form(json.to_json)
       json = json.to_json
 
-      # warn ">> #{json}"
-      answer = lxd.post(json, '/1.0/containers')
-      answer
-      # warn answer
+      warn ">> #{json}"
+      answer = lxd.post("/1.0/#{@inst}", json)
+      warn "create_lxd_vm: #{answer.inspect}"
+      answer['status'] == 'Success'
     end
 
     #
@@ -188,11 +188,9 @@ module LXD
     #
     def correct_last_port
       used = `ss -lpnt -f inet | awk '{print $4}'`
-        .split("\n")
-        .map { |l| l.split(':')[1].to_i}
-      while used.include? @last_port
-        @last_port += 1
-      end
+             .split("\n")
+             .map { |l| l.split(':')[1].to_i }
+      @last_port += 1 while used.include? @last_port
     end
 
     #  Create xinetd ssh forward config
@@ -201,10 +199,10 @@ module LXD
     #
     def create_xinetd_conf(host, cont, fullhost = nil)
       conf = "#{@xinetd}/ssh_#{host}"
-      #warn "xinetd cont = #{conf}"
+      # warn "xinetd cont = #{conf}"
       return false if File.file? conf
 
-      #warn "lp = #{@last_port}"
+      # warn "lp = #{@last_port}"
       correct_last_port
       template = File.read(@xinetd_tpl)
       template.gsub! '{host}', host
@@ -285,7 +283,7 @@ module LXD
       images.each do |f|
         fp = f.split('/').last
         im = image(fp)
-        # warn im
+        warn "f_by_i #{im.inspect}" if @debug
         next unless im && im['aliases']
         im['aliases'].each { |e| return fp if e['name'] == name }
         return fp if im['update_source'] &&
@@ -293,6 +291,7 @@ module LXD
       end
       nil
     end
+
     #####################################################################
     #####################################################################
     #
@@ -302,7 +301,7 @@ module LXD
     # @return [Json] just LXD answer
     #
     def containers
-      lxd.get('/1.0/containers')['metadata']
+      lxd.get("/1.0/#{@inst}")['metadata']
     end
 
     #
@@ -312,11 +311,31 @@ module LXD
     # @return [LXD::Container] container descriprion
     #
     def container(name)
-      c = lxd.get("/1.0/containers/#{name}")
+      c = lxd.get("/1.0/#{@inst}/#{name}")
       if c.empty?
         nil
       else
         LXD::Container.new(c)
+      end
+    end
+
+    ##
+    ## @brief      creates a new LXD::Container by json answer
+    ##
+    ## @param      [Hash] c json data
+    ##
+    def container_by_json(c)
+      warn c['metadata'].inspect
+      if c.nil? || c.empty? || c['original_status'].to_i >= 400
+        @err = c
+        nil
+      elsif c['metadata'] &&
+            c['metadata']['status_code'] &&
+            c['metadata']['status_code'].to_i < 400
+        LXD::Container.new(c)
+      else
+        @err = c
+        nil
       end
     end
 
@@ -342,17 +361,17 @@ module LXD
       #   }
       # }
       # warn "--> #{cont.to_json}"
-      c = lxd.post('/1.0/containers', cont.to_json)
+      c = lxd.post("/1.0/#{@inst}", cont.to_json)
       # warn "c = #{c}"
-      if c.nil? || c.empty? || c['original_status'].to_i >= 400
-        @err = c
-        nil
-      elsif c['metadata'] && c['metadata']['status_code'].to_i < 400
-        LXD::Container.new(c)
-      else
-        @err = c
-        nil
-      end
+      container_by_json(c)
+    end
+
+    # Delete container
+    #
+    # @param [String] name  container name
+    #
+    def delete(name)
+      lxd.delete("/1.0/#{@inst}/#{name}")
     end
 
     # Get container state
@@ -362,8 +381,9 @@ module LXD
     # @return [Hash] state
     #
     def container_state(name)
-      c = lxd.get("/1.0/containers/#{name}/state")
-      c['metadata']
+      c = lxd.get("/1.0/#{@inst}/#{name}/state")
+      # c['metadata']
+      #container_by_json(c)
     end
 
     # Change state of a container by name
@@ -373,12 +393,19 @@ module LXD
     #
     # Example:
     #   m.update_state 'my_container', action: 'start'
-    #   
+    #
     # @return [Hash|false] New state description or nil
     #
     def update_state(name, data = nil)
       return nil unless data
-      c = lxd.put("/1.0/containers/#{name}/state", data.to_json)
+      update = {
+        force: true,
+        stateful: false,
+        timeout: 30
+      }.merge(data).transform_keys(&:to_s)
+
+      warn "--> #{update.to_json.inspect} /1.0/#{@inst}/#{name}/state"
+      lxd.put("/1.0/#{@inst}/#{name}/state", update.to_json)
     end
   end
 end

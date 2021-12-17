@@ -1,6 +1,7 @@
 # frozen_string_literal: true
 
 require 'socket'
+require 'net/http'
 
 module LXD
   #
@@ -24,11 +25,61 @@ module LXD
     #
     # socket::  path to socket [/var/snap/lxd/common/lxd/unix.socket]
     #
-    def initialize(args={})
+    def initialize(args = {})
       # warn "--- #{args}"
       @socket = args[:socket] || '/var/snap/lxd/common/lxd/unix.socket'
       @debug = args[:debug]
       @conn = nil
+    end
+
+    ##
+    ## @brief      make a request to LXD server
+    ##
+    ## @param      path    The request path
+    ## @param      method  The method - :get, :put, :post
+    ## @param      [data]  The data to send
+    ##
+    def req(path, method, data = nil)
+      sock = Net::BufferedIO.new(UNIXSocket.new(@socket))
+      request =
+        case method
+        when :get
+          Net::HTTP::Get.new(path)
+        when :put
+          Net::HTTP::Put.new(path)
+        when :post
+          Net::HTTP::Post.new(path)
+        when :delete
+          Net::HTTP::Delete.new(path)
+        else
+          raise "Bad method '#{method}'"
+        end
+      request['host'] = 'a'
+      request.body = data if data
+      warn "> #{method}: #{path} -> #{request.body}" if @debug
+      request.exec(sock, '1.1', path)
+
+      response = nil
+      loop do
+        response = Net::HTTPResponse.read_new(sock)
+        break unless response.kind_of?(Net::HTTPContinue)
+      end
+      response.reading_body(sock, request.response_body_permitted?) {}
+
+      warn "response = #{response.inspect}" if @debug
+      answer = if response.kind_of?(Net::HTTPSuccess)
+                 JSON.parse(response.body)
+               else
+                 { code: response.code, failed: true }
+               end
+
+      op = answer['operation'].to_s
+      if op != ''
+        # warn "WAIT..."
+        answer = wait_operation op
+      end
+      warn "req answer: #{answer.inspect}" if @debug
+      answer
     end
 
     #
@@ -39,7 +90,21 @@ module LXD
     # @return [Bool] true if success
     #
     def get(path)
-      send_data(path, nil, 'GET')
+      # send_data(path, nil, 'GET')
+      req(path, :get)
+      # warn response.code
+    end
+
+    #
+    # Send data with DELETE method and get answer
+    #
+    # @param [String] path path
+    #
+    # @return [Bool] true if success
+    #
+    def delete(path)
+      req(path, :delete)
+      # warn response.code
     end
 
     #
@@ -51,7 +116,8 @@ module LXD
     # @return [Bool] true if success
     #
     def post(path, data)
-      send_data(path, data, 'POST')
+      # send_data(path, data, 'POST')
+      req(path, :post, data)
     end
 
     #
@@ -63,7 +129,8 @@ module LXD
     # @return [Bool] true if success
     #
     def put(path, data)
-      send_data(path, data, 'PUT')
+      # send_data(path, data, 'PUT')
+      req(path, :put, data)
     end
 
     #
@@ -83,24 +150,28 @@ module LXD
         headers << answer
         warn "<< #{answer}" if @debug
         case answer
-        when /HTTP\/[0-9.]+ (\d+)/
+        when %r{HTTP\/[0-9.]+ (\d+)}
           status = $1.to_i
-        when /Content-Length: (\d+)/
+        when %r{Content-Length: (\d+)}
           length = $1.to_i
-        when /^$/
+        when %r{^$}
           break
         end
       end
 
       length = length.to_i
       @status = status.to_i
-      return {
-        status: 999,
-        original_status: @status,
-        length: length,
-        headers: headers
-      }.to_json if @status < 1 or @status > 399
-      JSON.load(@conn.read(length))
+      if @status < 1 || @status > 399
+        return {
+          status: 999,
+          original_status: @status,
+          length: length,
+          headers: headers
+        }.to_json
+      end
+      data = @conn.read(length)
+      warn "data=>'#{data}'"
+      JSON.parse(data)
     end
 
     #
@@ -135,7 +206,7 @@ SEND_DATA
       answer = get_answer
       op = answer['operation'].to_s
       if op != ''
-        #warn "WAIT..."
+        # warn "WAIT..."
         answer = wait_operation op
       end
       warn "!! #{answer}" if @debug
@@ -147,7 +218,7 @@ SEND_DATA
     #
     # @return [Hash] answer form LXD
     #
-    def wait_operation op
+    def wait_operation(op)
       @conn.close if @conn && !@conn.closed?
       @conn = UNIXSocket.new(@socket)
       # warn "#{op}/wait"
@@ -162,7 +233,7 @@ CONT_WAIT
       @conn.write d
       answer = get_answer
       warn "** #{answer}" if @debug
-      return answer
+      answer
     end
   end
 end

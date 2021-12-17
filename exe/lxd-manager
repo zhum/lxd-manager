@@ -4,14 +4,18 @@
 # require "#{File.dirname(__FILE__)}/lib/lxd-manager"
 require 'lxd-manager'
 require 'optparse'
-
+require 'pp'
 # LOG = "/tmp/manage-site-#{ENV['USER']}.log".freeze
+MAX_WAIT_COUNT = 10 # 2 sec
 
 def print_help(parser, subcommands)
   print parser.to_s
   subcommands.each_key { |k| print subcommands[k].to_s }
 end
 
+##
+## @brief      Hack to add new method to OptionParser.
+##
 class OptionParser
   # Like order!, but leave any unrecognized --switches alone
   def order_recognized!(args)
@@ -49,6 +53,12 @@ subcommands = {
   'del' => OptionParser.new do |parser|
     parser.banner = "\ndel container_name"
   end,
+  'stop' => OptionParser.new do |parser|
+    parser.banner = "\nstop container_name"
+  end,
+  'start' => OptionParser.new do |parser|
+    parser.banner = "\nstart container_name"
+  end,
   'list' => OptionParser.new do |parser|
     parser.on('-c', '--csv', 'Use csv output')
     parser.banner = "\nlist [options]"
@@ -60,7 +70,7 @@ parser = OptionParser.new do |p|
 end
 
 parser.banner =
-  "Usage: #{$PROGRAM_NAME} {add|list} [options]"
+  "Usage: #{$PROGRAM_NAME} {add|del|stop|start|list} [options]"
 
 args = parser.order_recognized!(into: opts)
 # warn args
@@ -82,12 +92,6 @@ no_net = opts[:'no-network']
 domain = opts[:domain]
 verbose = opts[:verbose]
 
-name = args[0]
-if name.nil?
-  print_help parser, subcommands
-  exit 1
-end
-
 #
 # @brief      This class describes lxd commands.
 #
@@ -101,6 +105,8 @@ class LXDCommands
   def initialize(args)
     @mode = args[:mode]
     @verbose = args[:verbose]
+    @debug = args[:debug]
+    @max_wait_count = args[:max_wait_count] || 5
   end
 
   ##
@@ -119,16 +125,13 @@ class LXDCommands
   ## @return     nothing
   ##
   def start
-    @lxd = LXD::Manager.new
-    fail('Cannot connect to lxd') if @lxd.nil?
+    @lxd = LXD::Manager.new(debug: @debug)
   end
 
   def start_container(name)
     state = @lxd.container_state(name)
     if state.nil? || state['status_code'] != 103
-      if !@lxd.update_state name, action: 'start'
-        fail('Cannot start a container')
-      end
+      @lxd.update_state name, action: 'start'
     end
   end
 
@@ -136,9 +139,22 @@ class LXDCommands
     @src = if name.to_s == ''
              { type: 'none' }
            else
-             img = @lxd.fingerprint_by_imagename(name)
+             img = @lxd.fingerprint_by_imagename(name) || name
              { type: 'image', protocol: 'simplestreams', fingerprint: img }
            end
+  end
+
+  ##
+  ## @brief      Return LXD::Container by its name
+  ##
+  ## @param      name  The name
+  ## @return     LXD::Container or nil
+  ##
+  def container_by_name(name)
+    state = @lxd.container_state(name)
+    return nil if state.nil?
+    # create container description by current state
+    LXD::Container.new(state)
   end
 
   ##
@@ -146,35 +162,55 @@ class LXDCommands
   ##
   ## @param      name  The containername
   ##
-  def get_or_create(name, forward_only, profiles)
+  def get_or_create(name, forward_only, profiles = [], image = nil)
     if forward_only
-      state = @lxd.container_state(name)
-      fail "Cannot find container #{name}" if state.nil?
-      # create container description by current state
-      LXD::Container.new(state)
+      container_by_name(name)
     else
-      src = make_src(name)
-      @lxd.new_container(
+      src = make_src(image)
+      warn "src=#{src.inspect}; profiles=#{profiles}; image=#{image}"
+      cont = LXD::Container.new(
         profiles: profiles,
         name: name,
-        source: make_src(src)
+        fingerprint: src[:fingerprint],
+        source: src
       )
+      @lxd.create_lxd_vm(cont) ? container_by_name(name) : nil
     end
   end
 
+  ##
+  ## @brief      Creates configs for nginx/xinetd/...
+  ##
+  ## @param      host    The host
+  ## @param      cont    The container
+  ## @param      domain  The domain
+  ##
+  def create_configs(host, cont, domain = nil)
+    @lxd.create_configs(host, cont, domain)
+  end
+
+  ##
+  ## @brief      Gets the container ip.
+  ##
+  ## @param      name  The container name
+  ##
   def get_container_ip(name)
     st = nil
+    net = nil
+    count = @max_wait_count
     loop do
       st = @lxd.container_state(name)
-      break if st['network'] &&
-               st['network']['eth0'] &&
-               !st['network']['eth0']['addresses'].empty? &&
-               st['network']['eth0']['addresses'].any? { |x| x['family'] == 'inet' }
+      net = st && st['metadata'] && st['metadata']['network']
+      break if net &&
+               net['eth0'] &&
+               !net['eth0']['addresses'].empty? &&
+               net['eth0']['addresses'].any? { |x| x['family'] == 'inet' }
       sleep 0.2
+      count -= 1
+      return nil if count < 0
     end
-    addr = st['network']['eth0']['addresses'].select { |x| x['family'] == 'inet' }
-    fail('Cannot find any ipv4 address on eth0') if addr.empty?
-    addr[0]['address']
+    addr = net['eth0']['addresses'].select { |x| x['family'] == 'inet' }
+    addr.empty? ? nil : addr[0]['address']
   end
 
   ##
@@ -185,33 +221,43 @@ class LXDCommands
   def err
     @lxd.err
   end
+end
 
-  ##
-  ## @brief      Print the message and exit
-  ##
-  ## @param      txt   The text
-  ##
-  def fail(txt)
-    warn txt
+##
+## @brief      Print the message and exit
+##
+## @param      txt   The text
+##
+def fail(txt)
+  warn txt
+  exit 1
+end
+
+##
+## @brief      Print the text if verbose is true
+##
+## @param      txt   The text
+##
+def info(txt)
+  warn txt if opts[:verbose]
+end
+
+name = args[0]
+
+case mode
+when 'add'
+  if name.nil?
+    print_help parser, subcommands
     exit 1
   end
 
-  ##
-  ## @brief      Print the text if verbose is true
-  ##
-  ## @param      txt   The text
-  ##
-  def info(txt)
-    warn txt if @verbose
-  end
-end
-
-if mode == 'add'
-  l = LXDCommands.new(verbose: verbose)
+  l = LXDCommands.new(verbose: verbose, debug: false)
+  fail('Cannot connect to lxd') if l.nil?
   l.start
-  c = l.get_or_create(name, forward_only, profiles)
-
+  c = l.get_or_create(name, forward_only, profiles, image_name)
+  # fail "Cannot find container #{name}" if state.nil?
   fail("Cannot create container #{name} (#{l.err})") if c.nil?
+
   info('Created.')
 
   exit(0) if image_name.to_s == ''
@@ -220,13 +266,15 @@ if mode == 'add'
   exit(0) if no_net
 
   l.start_container(name)
+  fail('Cannot start a container') unless l
   info('Started.')
 
   local_ip = l.get_container_ip(name)
+  fail('Cannot find any ipv4 address on eth0') if local_ip.nil?
   info("Got ip address: #{local_ip}")
 
   c.local_ip = local_ip
-  ok, status = @lxd.create_configs(name, c, domain ? "#{name}.#{domain}" : name)
+  ok, status = l.create_configs(name, c, domain ? "#{name}.#{domain}" : name)
   fail(status) unless ok
 
   res = system('systemctl', 'restart', 'xinetd')
@@ -235,4 +283,141 @@ if mode == 'add'
   info "NGINX: #{res}\n"
   res = system('/usr/local/bin/ddns-update.sh', name)
   info "DNS: #{res}\n"
+when 'list'
+  m = LXD::Manager.new(debug: false)
+  answer = m.containers
+  if opts[:csv]
+    x = answer.map do |a|
+      cont = m.container(a.split('/').last)
+      [a, cont ? cont.lxd['metadata'] : "Error: #{m.err}"]
+    end.to_a
+    print x.to_json
+  else
+    answer.each do |cont|
+      name = cont.split('/').last
+      print "#{name}:\n"
+      data = m.container(name).lxd['metadata']
+      print "  status: #{data['status']}\n  location: #{data['location']}\n"
+      print "  profiles: #{data['profiles']}\n"
+      print "  MAC: #{data['config']['volatile.eth0.hwaddr']}\n"
+    end
+  end
+when 'stop'
+  if name.nil?
+    print_help parser, subcommands
+    exit 1
+  end
+  m = LXD::Manager.new(debug: false)
+  m.update_state(name, action: 'stop')
+  count = 0
+  state = nil
+  loop do
+    sleep 0.2
+    cont = m.container_state(name)
+    state = cont ? cont['metadata']['status'] : nil
+    break if state != 'Running'
+    count += 1
+    break if count > MAX_WAIT_COUNT
+  end
+  if count > MAX_WAIT_COUNT
+    print "Cannot stop #{name}. State is #{state}."
+  elsif state.nil?
+    print "Cannot stop #{name}..."
+  else
+    print 'Stopped.'
+  end
+when 'start'
+  if name.nil?
+    print_help parser, subcommands
+    exit 1
+  end
+  m = LXD::Manager.new(debug: false)
+  m.update_state(name, action: 'start')
+  count = 0
+  state = nil
+  loop do
+    sleep 0.2
+    cont = m.container_state(name)
+    state = cont ? cont.lxd['metadata']['status'] : nil
+    break if state == 'Running'
+    count += 1
+    break if count > MAX_WAIT_COUNT
+  end
+  if count > MAX_WAIT_COUNT
+    print "Cannot start #{name}. State is #{state}."
+  elsif state.nil?
+    print "Cannot start #{name}..."
+  else
+    print 'Started.'
+  end
+when 'del'
+  if name.nil?
+    print_help parser, subcommands
+    exit 1
+  end
+  m = LXD::Manager.new(debug: false)
+  ret = m.delete(name)
+  print ret.inspect
 end
+
+__END__
+{'type"=>"sync",
+ "status"=>"Success",
+ "status_code"=>200,
+ "operation"=>"",
+ "error_code"=>0,
+ "error"=>"",
+ "metadata"=>
+  {"architecture"=>"x86_64",
+   "config"=>
+    {"image.architecture"=>"amd64",
+     "image.description"=>"Debian buster amd64 (20210602_05:24)",
+     "image.os"=>"Debian",
+     "image.release"=>"buster",
+     "image.serial"=>"20210602_05:24",
+     "volatile.base_image"=>
+      "436d7f1bb0ce75f38787836d5a8c22e5d67346adc62b5a3f2dd1a8c0bfaf8581",
+     "volatile.eth0.host_name"=>"vethNR0OVZ",
+     "volatile.eth0.hwaddr"=>"00:16:3e:44:2c:c9",
+     "volatile.idmap.base"=>"0",
+     "volatile.idmap.current"=>
+      "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+     "volatile.idmap.next"=>
+      "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+     "volatile.last_state.idmap"=>
+      "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+     "volatile.last_state.power"=>"RUNNING"},
+   "devices"=>{},
+   "ephemeral"=>false,
+   "profiles"=>["lxdMosaicPullMetrics", "btr"],
+   "stateful"=>false,
+   "description"=>"",
+   "created_at"=>"2021-06-02T15:05:38+03:00",
+   "expanded_config"=>
+    {"environment.lxdMosaicPullMetrics"=>"y",
+     "image.architecture"=>"amd64",
+     "image.description"=>"Debian buster amd64 (20210602_05:24)",
+     "image.os"=>"Debian",
+     "image.release"=>"buster",
+     "image.serial"=>"20210602_05:24",
+     "volatile.base_image"=>
+      "436d7f1bb0ce75f38787836d5a8c22e5d67346adc62b5a3f2dd1a8c0bfaf8581",
+     "volatile.eth0.host_name"=>"vethNR0OVZ",
+     "volatile.eth0.hwaddr"=>"00:16:3e:44:2c:c9",
+     "volatile.idmap.base"=>"0",
+     "volatile.idmap.current"=>
+      "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+     "volatile.idmap.next"=>
+      "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+     "volatile.last_state.idmap"=>
+      "[{\"Isuid\":true,\"Isgid\":false,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000},{\"Isuid\":false,\"Isgid\":true,\"Hostid\":1000000,\"Nsid\":0,\"Maprange\":1000000000}]",
+     "volatile.last_state.power"=>"RUNNING"},
+   "expanded_devices"=>
+    {"eth0"=>
+      {"name"=>"eth0", "nictype"=>"bridged", "parent"=>"br0", "type"=>"nic"},
+     "root"=>{"path"=>"/", "pool"=>"pool2", "type"=>"disk"}},
+   "name"=>"mydeb10",
+   "status"=>"Running",
+   "status_code"=>103,
+   "last_used_at"=>"2021-07-25T08:16:02.505782155+03:00",
+   "location"=>"n2021-3"}}
