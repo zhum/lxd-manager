@@ -365,7 +365,7 @@ module LXD
     end
 
     ##
-    ## @brief      creates a new LXD::Container by json answer
+    ## Creates a new LXD::Container by json answer
     ##
     ## @param      [Hash] c json data
     ##

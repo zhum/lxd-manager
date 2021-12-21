@@ -33,11 +33,11 @@ module LXD
     end
 
     ##
-    ## @brief      make a request to LXD server
+    ## Make a request to LXD server
     ##
-    ## @param      path    The request path
-    ## @param      method  The method - :get, :put, :post
-    ## @param      [data]  The data to send
+    ## @param      [String]  path      The request path
+    ## @param      [String]  method    The method - :get, :put, :post
+    ## @param      [Any,nil] data  The data to send
     ##
     def req(path, method, data = nil)
       sock = Net::BufferedIO.new(UNIXSocket.new(@socket))
