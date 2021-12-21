@@ -95,7 +95,7 @@ module LXD
     end
 
     #
-    # Created new site configs
+    # Create new site configs
     #
     # @param [String] host   Site name
     # @param [String] cont   Container object (definition)
@@ -111,7 +111,27 @@ module LXD
       unless create_xinetd_conf(host, cont, domain)
         return [false, 'Cannot create xinetd config']
       end
-      return [false, 'Cannot create vm'] unless create_lxd_vm(cont)
+      # return [false, 'Cannot create vm'] unless create_lxd_vm(cont)
+
+      [true, 'ok']
+    end
+
+    #
+    # Delete site configs
+    #
+    # @param [String] host   Site name
+    # @return [Bool, String] true and 'ok' if site configs created
+    #                        false and fail reason on fail
+    #
+    def delete_configs(host)
+      unless delete_nginx_conf(host)
+        return [false, 'Cannot delete nginx config']
+      end
+
+      unless delete_xinetd_conf(host)
+        return [false, 'Cannot delete xinetd config']
+      end
+      # return [false, 'Cannot create vm'] unless create_lxd_vm(cont)
 
       [true, 'ok']
     end
@@ -167,6 +187,9 @@ module LXD
     #
     #  Create NGINX site config
     #
+    #  @param   [String] host   hostname
+    #  @param   [LXD::Container] cont container description
+    #  @param   [String] fullhost=nil full hostname
     #  @return [bool]  true if created, false  if failed or already exists
     #
     def create_nginx_conf(host, cont, fullhost = nil)
@@ -179,6 +202,18 @@ module LXD
       template.gsub! '{local_ip}', cont.local_ip
       File.open(conf, 'w') { |f| f.print template }
       true
+    end
+
+    #
+    #  Delete NGINX site config
+    #
+    #  @param   [String] host   hostname
+    #  @return [bool]  true if created, false  if failed or already exists
+    #
+    def delete_nginx_conf(host)
+      conf = "#{@nginx}/sites-available/#{host}.conf"
+      return false unless File.file? conf
+      File.delete(conf)
     end
 
     # Check if xinetd last port is available and find first free if not
@@ -215,6 +250,16 @@ module LXD
         f.print template
       end
       true
+    end
+
+    #  Delete xinetd ssh forward config
+    #
+    #  @return [bool]  true if created, false  if failed or already exists
+    #
+    def delete_xinetd_conf(host)
+      conf = "#{@xinetd}/ssh_#{host}"
+      return false unless File.file? conf
+      File.delete(conf)
     end
 
     #####################################################################

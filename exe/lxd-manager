@@ -6,7 +6,7 @@ require 'lxd-manager'
 require 'optparse'
 require 'pp'
 # LOG = "/tmp/manage-site-#{ENV['USER']}.log".freeze
-MAX_WAIT_COUNT = 10 # 2 sec
+MAX_WAIT_COUNT = 20 # 4 sec
 
 def print_help(parser, subcommands)
   print parser.to_s
@@ -90,7 +90,7 @@ image_name = opts[:image]
 forward_only = opts[:'forward-only']
 no_net = opts[:'no-network']
 domain = opts[:domain]
-verbose = opts[:verbose]
+$verbose = opts[:verbose]
 
 #
 # @brief      This class describes lxd commands.
@@ -106,7 +106,7 @@ class LXDCommands
     @mode = args[:mode]
     @verbose = args[:verbose]
     @debug = args[:debug]
-    @max_wait_count = args[:max_wait_count] || 5
+    @max_wait_count = args[:max_wait_count] || ::MAX_WAIT_COUNT
   end
 
   ##
@@ -234,12 +234,31 @@ def fail(txt)
 end
 
 ##
+## @brief      convert container hash to a description string
+##
+## @param      state  The state
+## @return     string with a description
+##
+def describe_cont(cont)
+  return 'Unknown error' if cont.nil?
+
+  case cont[:code]
+  when '404'
+    'Container not found'
+  when '400'
+    'Operation is not allowed'
+  else
+    "Error code #{cont[:code]}"
+  end
+end
+
+##
 ## @brief      Print the text if verbose is true
 ##
 ## @param      txt   The text
 ##
 def info(txt)
-  warn txt if opts[:verbose]
+  warn txt if $verbose
 end
 
 name = args[0]
@@ -251,7 +270,7 @@ when 'add'
     exit 1
   end
 
-  l = LXDCommands.new(verbose: verbose, debug: false)
+  l = LXDCommands.new(verbose: $verbose, debug: false)
   fail('Cannot connect to lxd') if l.nil?
   l.start
   c = l.get_or_create(name, forward_only, profiles, image_name)
@@ -275,9 +294,9 @@ when 'add'
 
   c.local_ip = local_ip
   ok, status = l.create_configs(name, c, domain ? "#{name}.#{domain}" : name)
-  fail(status) unless ok
+  fail(describe_cont(status)) unless ok
 
-  res = system('systemctl', 'restart', 'xinetd')
+  res = system('sudo', 'systemctl', 'restart', 'xinetd')
   info "XINETD: #{res}\n"
   res = system('/usr/local/sbin/nginx-modsite', '-b', '-e', "#{name}.conf")
   info "NGINX: #{res}\n"
@@ -311,20 +330,22 @@ when 'stop'
   m.update_state(name, action: 'stop')
   count = 0
   state = nil
+  cont = nil
   loop do
     sleep 0.2
     cont = m.container_state(name)
-    state = cont ? cont['metadata']['status'] : nil
+    info cont.inspect
+    state = cont && cont['metadata'] ? cont['metadata']['status'] : nil
     break if state != 'Running'
     count += 1
-    break if count > MAX_WAIT_COUNT
+    break if count > ::MAX_WAIT_COUNT
   end
-  if count > MAX_WAIT_COUNT
-    print "Cannot stop #{name}. State is #{state}."
+  if count > ::MAX_WAIT_COUNT
+    print "Cannot stop #{name}. #{describe_cont(cont)}.\n"
   elsif state.nil?
-    print "Cannot stop #{name}..."
+    print "Cannot stop #{name}... #{describe_cont(cont)}.\n"
   else
-    print 'Stopped.'
+    print "Stopped.\n"
   end
 when 'start'
   if name.nil?
@@ -335,20 +356,21 @@ when 'start'
   m.update_state(name, action: 'start')
   count = 0
   state = nil
+  cont = nil
   loop do
     sleep 0.2
     cont = m.container_state(name)
     state = cont ? cont.lxd['metadata']['status'] : nil
     break if state == 'Running'
     count += 1
-    break if count > MAX_WAIT_COUNT
+    break if count > ::MAX_WAIT_COUNT
   end
-  if count > MAX_WAIT_COUNT
-    print "Cannot start #{name}. State is #{state}."
+  if count > ::MAX_WAIT_COUNT
+    print "Cannot start #{name}. #{describe_cont(cont)}.\n"
   elsif state.nil?
-    print "Cannot start #{name}..."
+    print "Cannot start #{name}...#{describe_cont(cont)}.\n"
   else
-    print 'Started.'
+    print "Started.\n"
   end
 when 'del'
   if name.nil?
@@ -357,7 +379,19 @@ when 'del'
   end
   m = LXD::Manager.new(debug: false)
   ret = m.delete(name)
-  print ret.inspect
+  fail "Cannot delete a container: #{describe_cont(ret)}\n" if ret[:failed]
+
+  # disable site
+  res = system('/usr/local/sbin/nginx-modsite', '-b', '-d', "#{name}.conf")
+  info "NGINX: #{res}\n"
+
+  if m.delete_configs(name)
+    res = system('sudo', 'systemctl', 'restart', 'xinetd')
+    info "XINETD: #{res}\n"
+    print "Deleted\n"
+  else
+    print "Failed.\n"
+  end
 end
 
 __END__
