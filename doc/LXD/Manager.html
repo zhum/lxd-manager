@@ -102,7 +102,7 @@
 <h2>Overview</h2><div class="docstring">
   <div class="discussion">
     
-<p>Class LXD::Manager provides creation/updateing/deleting sites Example</p>
+<p>Class LXD::Manager provides creation/updateing/deleting sites</p>
 
 
   </div>
@@ -182,7 +182,7 @@
 
   
     <span class="summary_desc"><div class='inline'>
-<p>Returns the value of attribute acme.</p>
+<p>@return [String] acme.sh directory [/root/.acme.sh].</p>
 </div></span>
   
 </li>
@@ -211,7 +211,7 @@
 
   
     <span class="summary_desc"><div class='inline'>
-<p>Returns the value of attribute err.</p>
+<p>@return [Hash|nil] last error descripton.</p>
 </div></span>
   
 </li>
@@ -240,7 +240,8 @@
 
   
     <span class="summary_desc"><div class='inline'>
-<p>Returns the value of attribute lxd_socket.</p>
+<p>@return [String] path to lxd socket                   
+[/var/snap/lxd/common/lxd/unix.socket].</p>
 </div></span>
   
 </li>
@@ -269,7 +270,7 @@
 
   
     <span class="summary_desc"><div class='inline'>
-<p>Returns the value of attribute nginx.</p>
+<p>@return [String] path to nginx config dir [/etc/nginx].</p>
 </div></span>
   
 </li>
@@ -298,7 +299,7 @@
 
   
     <span class="summary_desc"><div class='inline'>
-<p>Returns the value of attribute nginx_tpl.</p>
+<p>@return [String] path to ngix site template [/etc/nginx/site-template].</p>
 </div></span>
   
 </li>
@@ -327,7 +328,7 @@
 
   
     <span class="summary_desc"><div class='inline'>
-<p>Returns the value of attribute xinetd.</p>
+<p>@return [String] path to xinetd.d [/etc/xinetd.d].</p>
 </div></span>
   
 </li>
@@ -356,7 +357,8 @@
 
   
     <span class="summary_desc"><div class='inline'>
-<p>Returns the value of attribute xinetd_tpl.</p>
+<p>@return [String] path to xinetd service template                   
+[/etc/xinetd_ssh_template].</p>
 </div></span>
   
 </li>
@@ -705,31 +707,7 @@
 
   
     <span class="summary_desc"><div class='inline'>
-<p>get fingerprint of named image.</p>
-</div></span>
-  
-</li>
-
-      
-        <li class="public ">
-  <span class="summary_signature">
-    
-      <a href="#image-instance_method" title="#image (instance method)">#<strong>image</strong>(fingerprint)  &#x21d2; Json </a>
-    
-
-    
-  </span>
-  
-  
-  
-  
-  
-  
-  
-
-  
-    <span class="summary_desc"><div class='inline'>
-<p>Get image by fingerprint.</p>
+<p>Get fingerprint of named image.</p>
 </div></span>
   
 </li>
@@ -803,7 +781,7 @@
 
   
     <span class="summary_desc"><div class='inline'>
-<p>Constructor.</p>
+<p>A new instance of Manager.</p>
 </div></span>
   
 </li>
@@ -827,7 +805,7 @@
 
   
     <span class="summary_desc"><div class='inline'>
-<p>Issue new certificate for site.</p>
+<p>Issues a new certificate for site.</p>
 </div></span>
   
 </li>
@@ -946,7 +924,9 @@
   
 
   
-    <span class="summary_desc"><div class='inline'></div></span>
+    <span class="summary_desc"><div class='inline'>
+<p>Saves current configuration into localfile.</p>
+</div></span>
   
 </li>
 
@@ -969,7 +949,7 @@
 
   
     <span class="summary_desc"><div class='inline'>
-<p>Renrew ssl certificate for site.</p>
+<p>Renrew the ssl certificate for site.</p>
 </div></span>
   
 </li>
@@ -1017,35 +997,13 @@
 </h3><div class="docstring">
   <div class="discussion">
     
-<p>Constructor</p>
+<p>Returns a new instance of Manager</p>
 
 
   </div>
 </div>
 <div class="tags">
-  <p class="tag_title">Parameters:</p>
-<ul class="param">
   
-    <li>
-      
-        <span class='name'>args</span>
-      
-      
-        <span class='type'>(<tt>Hash</tt>)</span>
-      
-      
-        <em class="default">(defaults to: <tt>{}</tt>)</em>
-      
-      
-        &mdash;
-        <div class='inline'>
-<p>&lt;description&gt;</p>
-</div>
-      
-    </li>
-  
-</ul>
-
 
 </div><table class="source_code">
   <tr>
@@ -1053,6 +1011,11 @@
       <pre class="lines">
 
 
+58
+59
+60
+61
+62
 63
 64
 65
@@ -1063,15 +1026,10 @@
 70
 71
 72
-73
-74
-75
-76
-77
-78</pre>
+73</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 63</span>
+      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 58</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_initialize'>initialize</span><span class='lparen'>(</span><span class='id identifier rubyid_args'>args</span> <span class='op'>=</span> <span class='lbrace'>{</span><span class='rbrace'>}</span><span class='rparen'>)</span>
   <span class='const'><span class='object_link'><a href="#DEFS-constant" title="LXD::Manager::DEFS (constant)">DEFS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_merge'>merge</span><span class='lparen'>(</span><span class='id identifier rubyid_args'>args</span><span class='rparen'>)</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_key'>key</span><span class='comma'>,</span> <span class='id identifier rubyid_value'>value</span><span class='op'>|</span>
@@ -1113,7 +1071,7 @@
 </h3><div class="docstring">
   <div class="discussion">
     
-<p>Returns the value of attribute acme</p>
+<p>@return [String] acme.sh directory [/root/.acme.sh]</p>
 
 
   </div>
@@ -1127,12 +1085,12 @@
       <pre class="lines">
 
 
-22
-23
-24</pre>
+19
+20
+21</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 22</span>
+      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 19</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_acme'>acme</span>
   <span class='ivar'>@acme</span>
@@ -1156,7 +1114,7 @@
 </h3><div class="docstring">
   <div class="discussion">
     
-<p>Returns the value of attribute err</p>
+<p>@return [Hash|nil] last error descripton</p>
 
 
   </div>
@@ -1170,12 +1128,12 @@
       <pre class="lines">
 
 
-18
-19
-20</pre>
+16
+17
+18</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 18</span>
+      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 16</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_err'>err</span>
   <span class='ivar'>@err</span>
@@ -1199,7 +1157,10 @@
 </h3><div class="docstring">
   <div class="discussion">
     
-<p>Returns the value of attribute lxd_socket</p>
+<p>@return [String] path to lxd socket</p>
+
+<pre class="code ruby"><code class="ruby">[/var/snap/lxd/common/lxd/unix.socket]
+</code></pre>
 
 
   </div>
@@ -1213,12 +1174,12 @@
       <pre class="lines">
 
 
-44
-45
-46</pre>
+36
+37
+38</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 44</span>
+      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 36</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_lxd_socket'>lxd_socket</span>
   <span class='ivar'>@lxd_socket</span>
@@ -1242,7 +1203,7 @@
 </h3><div class="docstring">
   <div class="discussion">
     
-<p>Returns the value of attribute nginx</p>
+<p>@return [String] path to nginx config dir [/etc/nginx]</p>
 
 
   </div>
@@ -1256,12 +1217,12 @@
       <pre class="lines">
 
 
-35
-36
-37</pre>
+29
+30
+31</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 35</span>
+      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 29</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_nginx'>nginx</span>
   <span class='ivar'>@nginx</span>
@@ -1285,7 +1246,7 @@
 </h3><div class="docstring">
   <div class="discussion">
     
-<p>Returns the value of attribute nginx_tpl</p>
+<p>@return [String] path to ngix site template [/etc/nginx/site-template]</p>
 
 
   </div>
@@ -1299,12 +1260,12 @@
       <pre class="lines">
 
 
-39
-40
-41</pre>
+32
+33
+34</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 39</span>
+      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 32</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_nginx_tpl'>nginx_tpl</span>
   <span class='ivar'>@nginx_tpl</span>
@@ -1328,7 +1289,7 @@
 </h3><div class="docstring">
   <div class="discussion">
     
-<p>Returns the value of attribute xinetd</p>
+<p>@return [String] path to xinetd.d [/etc/xinetd.d]</p>
 
 
   </div>
@@ -1342,12 +1303,12 @@
       <pre class="lines">
 
 
-26
-27
-28</pre>
+22
+23
+24</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 26</span>
+      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 22</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_xinetd'>xinetd</span>
   <span class='ivar'>@xinetd</span>
@@ -1371,7 +1332,10 @@
 </h3><div class="docstring">
   <div class="discussion">
     
-<p>Returns the value of attribute xinetd_tpl</p>
+<p>@return [String] path to xinetd service template</p>
+
+<pre class="code ruby"><code class="ruby">[/etc/xinetd_ssh_template]
+</code></pre>
 
 
   </div>
@@ -1385,12 +1349,12 @@
       <pre class="lines">
 
 
-31
-32
-33</pre>
+26
+27
+28</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 31</span>
+      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 26</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_xinetd_tpl'>xinetd_tpl</span>
   <span class='ivar'>@xinetd_tpl</span>
@@ -1425,7 +1389,27 @@
   </div>
 </div>
 <div class="tags">
+  <p class="tag_title">Parameters:</p>
+<ul class="param">
   
+    <li>
+      
+        <span class='name'>name</span>
+      
+      
+        <span class='type'>(<tt>String</tt>)</span>
+      
+      
+      
+        &mdash;
+        <div class='inline'>
+<p>The container name</p>
+</div>
+      
+    </li>
+  
+</ul>
+
 <p class="tag_title">Returns:</p>
 <ul class="return">
   
@@ -1438,7 +1422,7 @@
       
         &mdash;
         <div class='inline'>
-<p>container descriprion</p>
+<p>The container descriprion</p>
 </div>
       
     </li>
@@ -1451,17 +1435,17 @@
       <pre class="lines">
 
 
-358
-359
-360
-361
-362
-363
-364
-365</pre>
+346
+347
+348
+349
+350
+351
+352
+353</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 358</span>
+      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 346</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_container'>container</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_c'>c</span> <span class='op'>=</span> <span class='id identifier rubyid_lxd'>lxd</span><span class='period'>.</span><span class='id identifier rubyid_get'>get</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>/1.0/</span><span class='embexpr_beg'>#{</span><span class='ivar'>@inst</span><span class='embexpr_end'>}</span><span class='tstring_content'>/</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_name'>name</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
@@ -1522,23 +1506,23 @@
       <pre class="lines">
 
 
+360
+361
+362
+363
+364
+365
+366
+367
+368
+369
+370
+371
 372
-373
-374
-375
-376
-377
-378
-379
-380
-381
-382
-383
-384
-385</pre>
+373</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 372</span>
+      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 360</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_container_by_json'>container_by_json</span><span class='lparen'>(</span><span class='id identifier rubyid_c'>c</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_warn'>warn</span> <span class='id identifier rubyid_c'>c</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>metadata</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span><span class='period'>.</span><span class='id identifier rubyid_inspect'>inspect</span>
@@ -1623,14 +1607,14 @@
       <pre class="lines">
 
 
-428
-429
-430
-431
-432</pre>
+416
+417
+418
+419
+420</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 428</span>
+      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 416</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_container_state'>container_state</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_c'>c</span> <span class='op'>=</span> <span class='id identifier rubyid_lxd'>lxd</span><span class='period'>.</span><span class='id identifier rubyid_get'>get</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>/1.0/</span><span class='embexpr_beg'>#{</span><span class='ivar'>@inst</span><span class='embexpr_end'>}</span><span class='tstring_content'>/</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_name'>name</span><span class='embexpr_end'>}</span><span class='tstring_content'>/state</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
@@ -1686,12 +1670,12 @@
       <pre class="lines">
 
 
-348
-349
-350</pre>
+335
+336
+337</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 348</span>
+      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 335</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_containers'>containers</span>
   <span class='id identifier rubyid_lxd'>lxd</span><span class='period'>.</span><span class='id identifier rubyid_get'>get</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>/1.0/</span><span class='embexpr_beg'>#{</span><span class='ivar'>@inst</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>metadata</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span>
@@ -1720,24 +1704,6 @@
 </div>
 <div class="tags">
   
-<p class="tag_title">Returns:</p>
-<ul class="return">
-  
-    <li>
-      
-      
-        <span class='type'></span>
-      
-      
-      
-        
-        <div class='inline'>
-<p>none</p>
-</div>
-      
-    </li>
-  
-</ul>
 
 </div><table class="source_code">
   <tr>
@@ -1745,15 +1711,15 @@
       <pre class="lines">
 
 
-224
-225
-226
-227
-228
-229</pre>
+217
+218
+219
+220
+221
+222</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 224</span>
+      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 217</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_correct_last_port'>correct_last_port</span>
   <span class='id identifier rubyid_used'>used</span> <span class='op'>=</span> <span class='backtick'>`</span><span class='tstring_content'>ss -lpnt -f inet | awk &#39;{print $4}&#39;</span><span class='tstring_end'>`</span></span>
@@ -1846,6 +1812,8 @@
       <pre class="lines">
 
 
+104
+105
 106
 107
 108
@@ -1855,12 +1823,10 @@
 112
 113
 114
-115
-116
-117</pre>
+115</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 106</span>
+      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 104</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_create_configs'>create_configs</span><span class='lparen'>(</span><span class='id identifier rubyid_host'>host</span><span class='comma'>,</span> <span class='id identifier rubyid_cont'>cont</span><span class='comma'>,</span> <span class='id identifier rubyid_domain'>domain</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='kw'>unless</span> <span class='id identifier rubyid_create_nginx_conf'>create_nginx_conf</span><span class='lparen'>(</span><span class='id identifier rubyid_host'>host</span><span class='comma'>,</span> <span class='id identifier rubyid_cont'>cont</span><span class='comma'>,</span> <span class='id identifier rubyid_domain'>domain</span><span class='rparen'>)</span>
@@ -1943,6 +1909,10 @@
       <pre class="lines">
 
 
+164
+165
+166
+167
 168
 169
 170
@@ -1956,14 +1926,10 @@
 178
 179
 180
-181
-182
-183
-184
-185</pre>
+181</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 168</span>
+      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 164</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_create_lxd_vm'>create_lxd_vm</span><span class='lparen'>(</span><span class='id identifier rubyid_cont'>cont</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_json'>json</span> <span class='op'>=</span> <span class='lbrace'>{</span>
@@ -2002,10 +1968,10 @@
     
 <p>Create NGINX site config</p>
 
-<pre class="code ruby"><code class="ruby">@param   [String] host   hostname
-@param   [LXD::Container] cont container description
-@param   [String] fullhost=nil full hostname
-@return [bool]  true if created, false  if failed or already exists
+<pre class="code ruby"><code class="ruby">@param   host [String]   hostname
+@param   cont [LXD::Container] container description
+@param   fullhost [String, nil] full hostname
+@return  [bool]  true if created, false  if failed or already exists
 </code></pre>
 
 
@@ -2020,20 +1986,20 @@
       <pre class="lines">
 
 
+191
+192
+193
+194
 195
 196
 197
 198
 199
 200
-201
-202
-203
-204
-205</pre>
+201</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 195</span>
+      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 191</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_create_nginx_conf'>create_nginx_conf</span><span class='lparen'>(</span><span class='id identifier rubyid_host'>host</span><span class='comma'>,</span> <span class='id identifier rubyid_cont'>cont</span><span class='comma'>,</span> <span class='id identifier rubyid_fullhost'>fullhost</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_conf'>conf</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='ivar'>@nginx</span><span class='embexpr_end'>}</span><span class='tstring_content'>/sites-available/</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_host'>host</span><span class='embexpr_end'>}</span><span class='tstring_content'>.conf</span><span class='tstring_end'>&quot;</span></span>
@@ -2065,7 +2031,10 @@
     
 <p>Create xinetd ssh forward config</p>
 
-<pre class="code ruby"><code class="ruby">@return [bool]  true if created, false  if failed or already exists
+<pre class="code ruby"><code class="ruby">@param   host [String]   hostname
+@param   cont [LXD::Container] container description
+@param   fullhost [String, nil] full hostname
+@return  [bool]  true if created, false  if failed or already exists
 </code></pre>
 
 
@@ -2080,6 +2049,10 @@
       <pre class="lines">
 
 
+231
+232
+233
+234
 235
 236
 237
@@ -2094,14 +2067,10 @@
 246
 247
 248
-249
-250
-251
-252
-253</pre>
+249</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 235</span>
+      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 231</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_create_xinetd_conf'>create_xinetd_conf</span><span class='lparen'>(</span><span class='id identifier rubyid_host'>host</span><span class='comma'>,</span> <span class='id identifier rubyid_cont'>cont</span><span class='comma'>,</span> <span class='id identifier rubyid_fullhost'>fullhost</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_conf'>conf</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='ivar'>@xinetd</span><span class='embexpr_end'>}</span><span class='tstring_content'>/ssh_</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_host'>host</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
@@ -2173,12 +2142,12 @@
       <pre class="lines">
 
 
-418
-419
-420</pre>
+406
+407
+408</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 418</span>
+      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 406</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_lxd'>lxd</span><span class='period'>.</span><span class='id identifier rubyid_delete'>delete</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>/1.0/</span><span class='embexpr_beg'>#{</span><span class='ivar'>@inst</span><span class='embexpr_end'>}</span><span class='tstring_content'>/</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_name'>name</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
@@ -2252,6 +2221,8 @@
       <pre class="lines">
 
 
+124
+125
 126
 127
 128
@@ -2261,12 +2232,10 @@
 132
 133
 134
-135
-136
-137</pre>
+135</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 126</span>
+      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 124</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_delete_configs'>delete_configs</span><span class='lparen'>(</span><span class='id identifier rubyid_host'>host</span><span class='rparen'>)</span>
   <span class='kw'>unless</span> <span class='id identifier rubyid_delete_nginx_conf'>delete_nginx_conf</span><span class='lparen'>(</span><span class='id identifier rubyid_host'>host</span><span class='rparen'>)</span>
@@ -2299,7 +2268,7 @@
     
 <p>Delete NGINX site config</p>
 
-<pre class="code ruby"><code class="ruby">@param   [String] host   hostname
+<pre class="code ruby"><code class="ruby">@param  host  [String]  hostname
 @return [bool]  true if created, false  if failed or already exists
 </code></pre>
 
@@ -2315,14 +2284,14 @@
       <pre class="lines">
 
 
-213
-214
-215
-216
-217</pre>
+209
+210
+211
+212
+213</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 213</span>
+      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 209</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_delete_nginx_conf'>delete_nginx_conf</span><span class='lparen'>(</span><span class='id identifier rubyid_host'>host</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_conf'>conf</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='ivar'>@nginx</span><span class='embexpr_end'>}</span><span class='tstring_content'>/sites-available/</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_host'>host</span><span class='embexpr_end'>}</span><span class='tstring_content'>.conf</span><span class='tstring_end'>&quot;</span></span>
@@ -2348,7 +2317,8 @@
     
 <p>Delete xinetd ssh forward config</p>
 
-<pre class="code ruby"><code class="ruby">@return [bool]  true if created, false  if failed or already exists
+<pre class="code ruby"><code class="ruby">@param   host [String]   hostname
+@return  [bool]  true if created, false  if failed or already exists
 </code></pre>
 
 
@@ -2363,14 +2333,14 @@
       <pre class="lines">
 
 
+256
+257
+258
 259
-260
-261
-262
-263</pre>
+260</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 259</span>
+      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 256</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_delete_xinetd_conf'>delete_xinetd_conf</span><span class='lparen'>(</span><span class='id identifier rubyid_host'>host</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_conf'>conf</span> <span class='op'>=</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='ivar'>@xinetd</span><span class='embexpr_end'>}</span><span class='tstring_content'>/ssh_</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_host'>host</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
@@ -2394,7 +2364,7 @@
 </h3><div class="docstring">
   <div class="discussion">
     
-<p>get fingerprint of named image</p>
+<p>Get fingerprint of named image</p>
 
 
   </div>
@@ -2446,21 +2416,21 @@
       <pre class="lines">
 
 
-327
-328
-329
-330
-331
-332
-333
-334
-335
-336
-337
-338</pre>
+314
+315
+316
+317
+318
+319
+320
+321
+322
+323
+324
+325</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 327</span>
+      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 314</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_fingerprint_by_imagename'>fingerprint_by_imagename</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_images'>images</span><span class='period'>.</span><span class='id identifier rubyid_each'>each</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_f'>f</span><span class='op'>|</span>
@@ -2480,9 +2450,9 @@
 </div>
     
       <div class="method_details ">
-  <h3 class="signature " id="image-instance_method">
+  <h3 class="signature " id="image_by_fingerprint-instance_method">
   
-    #<strong>image</strong>(fingerprint)  &#x21d2; <tt>Json</tt> 
+    #<strong>image_by_fingerprint</strong>(fingerprint)  &#x21d2; <tt>Json</tt> 
   
 
   
@@ -2509,6 +2479,11 @@
       
       
       
+        &mdash;
+        <div class='inline'>
+<p>The fingerprint</p>
+</div>
+      
     </li>
   
 </ul>
@@ -2538,74 +2513,15 @@
       <pre class="lines">
 
 
-306
-307
-308</pre>
+303
+304
+305</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 306</span>
-
-<span class='kw'>def</span> <span class='id identifier rubyid_image'>image</span><span class='lparen'>(</span><span class='id identifier rubyid_fingerprint'>fingerprint</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_lxd'>lxd</span><span class='period'>.</span><span class='id identifier rubyid_get'>get</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>/1.0/images/</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_fingerprint'>fingerprint</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>metadata</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span>
-<span class='kw'>end</span></pre>
-    </td>
-  </tr>
-</table>
-</div>
-    
-      <div class="method_details ">
-  <h3 class="signature " id="image_by_fingerprint-instance_method">
-  
-    #<strong>image_by_fingerprint</strong>(fingerprint)  &#x21d2; <tt>Json</tt> 
-  
-
-  
-
-  
-</h3><div class="docstring">
-  <div class="discussion">
-    
-<p>Get image by fingerprint</p>
-
-
-  </div>
-</div>
-<div class="tags">
-  
-<p class="tag_title">Returns:</p>
-<ul class="return">
-  
-    <li>
-      
-      
-        <span class='type'>(<tt>Json</tt>)</span>
-      
-      
-      
-        &mdash;
-        <div class='inline'>
-<p>just LXD answer</p>
-</div>
-      
-    </li>
-  
-</ul>
-
-</div><table class="source_code">
-  <tr>
-    <td>
-      <pre class="lines">
-
-
-316
-317
-318</pre>
-    </td>
-    <td>
-      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 316</span>
+      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 303</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_image_by_fingerprint'>image_by_fingerprint</span><span class='lparen'>(</span><span class='id identifier rubyid_fingerprint'>fingerprint</span><span class='rparen'>)</span>
-  <span class='id identifier rubyid_lxd'>lxd</span><span class='period'>.</span><span class='id identifier rubyid_get'>get</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>/1.0/images/</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_fingerprint'>fingerprint</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span>
+  <span class='id identifier rubyid_lxd'>lxd</span><span class='period'>.</span><span class='id identifier rubyid_get'>get</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>/1.0/images/</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_fingerprint'>fingerprint</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>metadata</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span>
 <span class='kw'>end</span></pre>
     </td>
   </tr>
@@ -2656,12 +2572,12 @@
       <pre class="lines">
 
 
-295
-296
-297</pre>
+292
+293
+294</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 295</span>
+      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 292</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_images'>images</span>
   <span class='id identifier rubyid_lxd'>lxd</span><span class='period'>.</span><span class='id identifier rubyid_get'>get</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>/1.0/images</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>metadata</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span>
@@ -2683,7 +2599,7 @@
 </h3><div class="docstring">
   <div class="discussion">
     
-<p>Issue new certificate for site</p>
+<p>Issues a new certificate for site</p>
 
 
   </div>
@@ -2715,12 +2631,12 @@
       <pre class="lines">
 
 
-157
-158
-159</pre>
+153
+154
+155</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 157</span>
+      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 153</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_issue_ssl'>issue_ssl</span><span class='lparen'>(</span><span class='id identifier rubyid_host'>host</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_system'>system</span> <span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='ivar'>@acme</span><span class='embexpr_end'>}</span><span class='tstring_content'>/acme.sh --issue -d </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_host'>host</span><span class='embexpr_end'>}</span><span class='tstring_content'> &gt;&gt; </span><span class='embexpr_beg'>#{</span><span class='const'>LOG</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span>
@@ -2774,12 +2690,12 @@
       <pre class="lines">
 
 
-93
-94
-95</pre>
+91
+92
+93</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 93</span>
+      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 91</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_lxd'>lxd</span>
   <span class='ivar'>@lxd</span> <span class='op'>||=</span> <span class='const'><span class='object_link'><a href="../LXD.html" title="LXD (module)">LXD</a></span></span><span class='op'>::</span><span class='const'><span class='object_link'><a href="Socket.html" title="LXD::Socket (class)">Socket</a></span></span><span class='period'>.</span><span class='id identifier rubyid_new'><span class='object_link'><a href="Socket.html#initialize-instance_method" title="LXD::Socket#initialize (method)">new</a></span></span><span class='lparen'>(</span><span class='label'>socket:</span> <span class='ivar'>@lxd_socket</span><span class='comma'>,</span> <span class='label'>debug:</span> <span class='ivar'>@debug</span><span class='rparen'>)</span>
@@ -2853,28 +2769,28 @@
       <pre class="lines">
 
 
+382
+383
+384
+385
+386
+387
+388
+389
+390
+391
+392
+393
 394
 395
 396
 397
 398
 399
-400
-401
-402
-403
-404
-405
-406
-407
-408
-409
-410
-411
-412</pre>
+400</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 394</span>
+      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 382</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_new_container'>new_container</span><span class='lparen'>(</span><span class='id identifier rubyid_cont'>cont</span><span class='rparen'>)</span>
   <span class='comment'># data = {
@@ -2944,12 +2860,12 @@
       <pre class="lines">
 
 
-283
-284
-285</pre>
+280
+281
+282</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 283</span>
+      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 280</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_profile'>profile</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_lxd'>lxd</span><span class='period'>.</span><span class='id identifier rubyid_get'>get</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='tstring_content'>/1.0/profiles/</span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_name'>name</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>metadata</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span>
@@ -3003,12 +2919,12 @@
       <pre class="lines">
 
 
-273
-274
-275</pre>
+270
+271
+272</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 273</span>
+      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 270</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_profiles'>profiles</span>
   <span class='id identifier rubyid_lxd'>lxd</span><span class='period'>.</span><span class='id identifier rubyid_get'>get</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>/1.0/profiles</span><span class='tstring_end'>&#39;</span></span><span class='rparen'>)</span><span class='lbracket'>[</span><span class='tstring'><span class='tstring_beg'>&#39;</span><span class='tstring_content'>metadata</span><span class='tstring_end'>&#39;</span></span><span class='rbracket'>]</span>
@@ -3027,22 +2943,33 @@
   
 
   
-</h3><table class="source_code">
+</h3><div class="docstring">
+  <div class="discussion">
+    
+<p>Saves current configuration into localfile</p>
+
+
+  </div>
+</div>
+<div class="tags">
+  
+
+</div><table class="source_code">
   <tr>
     <td>
       <pre class="lines">
 
 
+78
+79
 80
 81
 82
 83
-84
-85
-86</pre>
+84</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 80</span>
+      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 78</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_save_conf'>save_conf</span>
   <span class='id identifier rubyid_opts'>opts</span> <span class='op'>=</span> <span class='const'>Hash</span><span class='lbracket'>[</span> <span class='const'><span class='object_link'><a href="#DEFS-constant" title="LXD::Manager::DEFS (constant)">DEFS</a></span></span><span class='period'>.</span><span class='id identifier rubyid_keys'>keys</span><span class='period'>.</span><span class='id identifier rubyid_map'>map</span> <span class='kw'>do</span> <span class='op'>|</span><span class='id identifier rubyid_k'>k</span><span class='op'>|</span>
@@ -3068,7 +2995,7 @@
 </h3><div class="docstring">
   <div class="discussion">
     
-<p>Renrew ssl certificate for site</p>
+<p>Renrew the ssl certificate for site</p>
 
 
   </div>
@@ -3100,14 +3027,14 @@
       <pre class="lines">
 
 
+142
+143
+144
 145
-146
-147
-148
-149</pre>
+146</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 145</span>
+      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 142</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_update_ssl'>update_ssl</span><span class='lparen'>(</span><span class='id identifier rubyid_host'>host</span><span class='rparen'>)</span>
   <span class='id identifier rubyid_system'>system</span><span class='lparen'>(</span><span class='tstring'><span class='tstring_beg'>&quot;</span><span class='embexpr_beg'>#{</span><span class='ivar'>@acme</span><span class='embexpr_end'>}</span><span class='tstring_content'>/acme.sh --renew -d </span><span class='embexpr_beg'>#{</span><span class='id identifier rubyid_host'>host</span><span class='embexpr_end'>}</span><span class='tstring_content'> &gt;&gt; </span><span class='embexpr_beg'>#{</span><span class='const'>LOG</span><span class='embexpr_end'>}</span><span class='tstring_end'>&quot;</span></span><span class='rparen'>)</span> \
@@ -3206,20 +3133,20 @@
       <pre class="lines">
 
 
-444
-445
-446
-447
-448
-449
-450
-451
-452
-453
-454</pre>
+432
+433
+434
+435
+436
+437
+438
+439
+440
+441
+442</pre>
     </td>
     <td>
-      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 444</span>
+      <pre class="code"><span class="info file"># File 'lib/lxd/manager.rb', line 432</span>
 
 <span class='kw'>def</span> <span class='id identifier rubyid_update_state'>update_state</span><span class='lparen'>(</span><span class='id identifier rubyid_name'>name</span><span class='comma'>,</span> <span class='id identifier rubyid_data'>data</span> <span class='op'>=</span> <span class='kw'>nil</span><span class='rparen'>)</span>
   <span class='kw'>return</span> <span class='kw'>nil</span> <span class='kw'>unless</span> <span class='id identifier rubyid_data'>data</span>

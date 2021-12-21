@@ -14,7 +14,7 @@ def print_help(parser, subcommands)
 end
 
 ##
-## @brief      Hack to add new method to OptionParser.
+## Hack to add new method to OptionParser.
 ##
 class OptionParser
   # Like order!, but leave any unrecognized --switches alone
@@ -80,10 +80,10 @@ if !subcommands.keys.include?(mode) || opts[:help]
   exit 0
 end
 
-warn "MODE: #{mode}"
+info "MODE: #{mode}"
 
 subcommands[mode].parse!(args, into: opts)
-warn "ARGS: #{args.inspect}"
+info "ARGS: #{args.inspect}"
 
 profiles = opts[:profiles] || ['default']
 image_name = opts[:image]
@@ -93,11 +93,11 @@ domain = opts[:domain]
 $verbose = opts[:verbose]
 
 #
-# @brief      This class describes lxd commands.
+# This class describes lxd commands.
 #
 class LXDCommands
   #
-  # @brief      Contrsuctor
+  # Contrsuctor
   #
   # @param      args  Hash of args:
   #             - :mode  type of command (:add, :del, :list)
@@ -110,7 +110,7 @@ class LXDCommands
   end
 
   ##
-  ## @brief      create a VM
+  ## create a VM
   ##
   ## @param      name  VM name
   ## @param      opts  The options
@@ -120,7 +120,7 @@ class LXDCommands
   end
 
   ##
-  ## @brief      Connect to LXD
+  ## Connect to LXD
   ##
   ## @return     nothing
   ##
@@ -145,7 +145,7 @@ class LXDCommands
   end
 
   ##
-  ## @brief      Return LXD::Container by its name
+  ## Return LXD::Container by its name
   ##
   ## @param      name  The name
   ## @return     LXD::Container or nil
@@ -158,7 +158,7 @@ class LXDCommands
   end
 
   ##
-  ## @brief      Gets the or creates a container
+  ## Gets the or creates a container
   ##
   ## @param      name  The containername
   ##
@@ -179,7 +179,7 @@ class LXDCommands
   end
 
   ##
-  ## @brief      Creates configs for nginx/xinetd/...
+  ## Creates configs for nginx/xinetd/...
   ##
   ## @param      host    The host
   ## @param      cont    The container
@@ -190,7 +190,7 @@ class LXDCommands
   end
 
   ##
-  ## @brief      Gets the container ip.
+  ## Gets the container ip.
   ##
   ## @param      name  The container name
   ##
@@ -214,7 +214,7 @@ class LXDCommands
   end
 
   ##
-  ## @brief      Get a LXD last error
+  ## Get a LXD last error
   ##
   ## @return     Last error value
   ##
@@ -224,7 +224,7 @@ class LXDCommands
 end
 
 ##
-## @brief      Print the message and exit
+## Print the message and exit
 ##
 ## @param      txt   The text
 ##
@@ -234,7 +234,7 @@ def fail(txt)
 end
 
 ##
-## @brief      convert container hash to a description string
+## convert container hash to a description string
 ##
 ## @param      state  The state
 ## @return     string with a description
@@ -253,7 +253,7 @@ def describe_cont(cont)
 end
 
 ##
-## @brief      Print the text if verbose is true
+## Print the text if verbose is true
 ##
 ## @param      txt   The text
 ##

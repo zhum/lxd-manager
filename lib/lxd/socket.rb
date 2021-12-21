@@ -11,19 +11,19 @@ module LXD
   #
   class Socket
     #
-    # @!attribute [r] socket
     #   @return [String] path to socket
     attr_reader :socket
 
     #
-    # @!attribute [r] status
     #   @return [Integer] HTTP status of last request
     attr_reader :status
 
-    #
     # Constructor
     #
-    # socket::  path to socket [/var/snap/lxd/common/lxd/unix.socket]
+    # @param      args  options:
+    #             -  `:socket` (path to socket [/var/snap/lxd/common/lxd/unix.socket]),
+    #             -  `:debug` (bool),
+    #
     #
     def initialize(args = {})
       # warn "--- #{args}"
@@ -35,9 +35,9 @@ module LXD
     ##
     ## Make a request to LXD server
     ##
-    ## @param      [String]  path      The request path
-    ## @param      [String]  method    The method - :get, :put, :post
-    ## @param      [Any,nil] data  The data to send
+    ## @param  path [String]        The request path
+    ## @param  method [String]      The method - :get, :put, :post
+    ## @param  data [#to_s, nil]   The data to send
     ##
     def req(path, method, data = nil)
       sock = Net::BufferedIO.new(UNIXSocket.new(@socket))
@@ -85,7 +85,7 @@ module LXD
     #
     # Send data with GET method and get answer
     #
-    # @param [String] path path
+    # @param path [String] path
     #
     # @return [Bool] true if success
     #
@@ -98,9 +98,9 @@ module LXD
     #
     # Send data with DELETE method and get answer
     #
-    # @param [String] path path
+    # @param path [String] path
     #
-    # @return [Bool] true if success
+    # @return true [Bool] if success
     #
     def delete(path)
       req(path, :delete)
@@ -110,8 +110,8 @@ module LXD
     #
     # Send data with POST method and get answer
     #
-    # @param [String] path path
-    # @param [String] data data to send (json format)
+    # @param path [String] path
+    # @param data [String] data to send (json format)
     #
     # @return [Bool] true if success
     #
@@ -123,8 +123,8 @@ module LXD
     #
     # Send data with PUT method and get answer
     #
-    # @param [String] path path
-    # @param [String] data data to send (json format)
+    # @param path [String] path
+    # @param data [String] data to send (json format)
     #
     # @return [Bool] true if success
     #

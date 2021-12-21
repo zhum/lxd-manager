@@ -7,38 +7,30 @@ require 'yaml'
 module LXD
   #
   # Class LXD::Manager provides creation/updateing/deleting sites
-  # Example
   #
   # @author Sergey Zhumatiy <serg@parallel.ru>
   #
   class Manager
     #
-    # @!attribute [r] err
     #   @return [Hash|nil] last error descripton
     attr_reader :err
     #
-    # @!attribute [r] acme
     #   @return [String] acme.sh directory [/root/.acme.sh]
     attr_reader :acme
     #
-    # @!attribute [r] xinetd
     #   @return [String] path to xinetd.d [/etc/xinetd.d]
     attr_reader :xinetd
     #
-    # @!attribute [r] xinetd_tpl
     #   @return [String] path to xinetd service template
     #                    [/etc/xinetd_ssh_template]
     attr_reader :xinetd_tpl
     #
-    # @!attribute [r] nginx
-    #   @return [String] path to ngix config dir [/etc/nginx]
+    #   @return [String] path to nginx config dir [/etc/nginx]
     attr_reader :nginx
     #
-    # @!attribute [r] nginx_tpl
     #   @return [String] path to ngix site template [/etc/nginx/site-template]
     attr_reader :nginx_tpl
     #
-    # @!attribute [r] lxd_socket
     #   @return [String] path to lxd socket
     #                    [/var/snap/lxd/common/lxd/unix.socket]
     attr_reader :lxd_socket
@@ -58,7 +50,10 @@ module LXD
     #
     # Constructor
     #
-    # @param [Hash] args <description>
+    # @param args [Hash] available options: `:acme`, `:xinetd`, `:xinetd_tpl`,
+    #                                       `:nginx`,`:nginx_tpl`,`:lxd_socket`.
+    #                                        See attributes descriptions.
+
     #
     def initialize(args = {})
       DEFS.merge(args).each do |key, value|
@@ -77,6 +72,9 @@ module LXD
       @inst = args[:new_api] ? 'instances' : 'containers'
     end
 
+    ##
+    ## Saves current configuration into localfile
+    ##
     def save_conf
       opts = Hash[ DEFS.keys.map do |k|
                      [k.to_s, instance_variable_get("@#{k}")]
@@ -97,8 +95,8 @@ module LXD
     #
     # Create new site configs
     #
-    # @param [String] host   Site name
-    # @param [String] cont   Container object (definition)
+    # @param host [String]   Site name
+    # @param cont [String]   Container object (definition)
     #
     # @return [Bool, String] true and 'ok' if site configs created
     #                        false and fail reason on fail
@@ -119,7 +117,7 @@ module LXD
     #
     # Delete site configs
     #
-    # @param [String] host   Site name
+    # @param host [String]   Site name
     # @return [Bool, String] true and 'ok' if site configs created
     #                        false and fail reason on fail
     #
@@ -137,8 +135,7 @@ module LXD
     end
 
     #
-    #
-    # Renrew ssl certificate for site
+    # Renrew the ssl certificate for site
     #
     # @return [bool] true if certificate was actually updated
     #
@@ -149,8 +146,7 @@ module LXD
     end
 
     #
-    # Issue new certificate for site
-    #
+    # Issues a new certificate for site
     #
     # @return [boot] true if certificate was issued
     #
@@ -161,7 +157,7 @@ module LXD
     #
     # Creates a new container via LXC API
     #
-    # @param [String] cont Container description
+    # @param cont [String] Container description
     #
     # @return [Json] LXD answer
     #
@@ -187,10 +183,10 @@ module LXD
     #
     #  Create NGINX site config
     #
-    #  @param   [String] host   hostname
-    #  @param   [LXD::Container] cont container description
-    #  @param   [String] fullhost=nil full hostname
-    #  @return [bool]  true if created, false  if failed or already exists
+    #  @param   host [String]   hostname
+    #  @param   cont [LXD::Container] container description
+    #  @param   fullhost [String, nil] full hostname
+    #  @return  [bool]  true if created, false  if failed or already exists
     #
     def create_nginx_conf(host, cont, fullhost = nil)
       conf = "#{@nginx}/sites-available/#{host}.conf"
@@ -207,7 +203,7 @@ module LXD
     #
     #  Delete NGINX site config
     #
-    #  @param   [String] host   hostname
+    #  @param  host  [String]  hostname
     #  @return [bool]  true if created, false  if failed or already exists
     #
     def delete_nginx_conf(host)
@@ -218,9 +214,6 @@ module LXD
 
     # Check if xinetd last port is available and find first free if not
     #
-    #
-    # @return none
-    #
     def correct_last_port
       used = `ss -lpnt -f inet | awk '{print $4}'`
              .split("\n")
@@ -230,7 +223,10 @@ module LXD
 
     #  Create xinetd ssh forward config
     #
-    #  @return [bool]  true if created, false  if failed or already exists
+    #  @param   host [String]   hostname
+    #  @param   cont [LXD::Container] container description
+    #  @param   fullhost [String, nil] full hostname
+    #  @return  [bool]  true if created, false  if failed or already exists
     #
     def create_xinetd_conf(host, cont, fullhost = nil)
       conf = "#{@xinetd}/ssh_#{host}"
@@ -254,7 +250,8 @@ module LXD
 
     #  Delete xinetd ssh forward config
     #
-    #  @return [bool]  true if created, false  if failed or already exists
+    #  @param   host [String]   hostname
+    #  @return  [bool]  true if created, false  if failed or already exists
     #
     def delete_xinetd_conf(host)
       conf = "#{@xinetd}/ssh_#{host}"
@@ -299,28 +296,18 @@ module LXD
     #
     # Get image by fingerprint
     #
-    # @param [String] fingerprint
-    #
-    # @return [Json] just LXD answer
-    #
-    def image(fingerprint)
-      lxd.get("/1.0/images/#{fingerprint}")['metadata']
-    end
-
-    #
-    # Get image by fingerprint
-    #
+    # @param  fingerprint[String]  The fingerprint
     #
     # @return [Json] just LXD answer
     #
     def image_by_fingerprint(fingerprint)
-      lxd.get("/1.0/images/#{fingerprint}")
+      lxd.get("/1.0/images/#{fingerprint}")['metadata']
     end
 
     #
-    # get fingerprint of named image
+    # Get fingerprint of named image
     #
-    # @param [String] name name of image
+    # @param name [String] name of image
     #
     # @return [String|nil] fingerprint if found
     #
@@ -353,7 +340,8 @@ module LXD
     # Get container by name
     #
     #
-    # @return [LXD::Container] container descriprion
+    # @param      name [String]  The container name
+    # @return     [LXD::Container] The container descriprion
     #
     def container(name)
       c = lxd.get("/1.0/#{@inst}/#{name}")
@@ -387,7 +375,7 @@ module LXD
     #
     # Create new container
     #
-    # @param  [Hash|JSON] cont  container description
+    # @param  cont [Hash|JSON]  container description
     #
     # @return [LXD::Container|nil] new container or nil
     #
@@ -413,7 +401,7 @@ module LXD
 
     # Delete container
     #
-    # @param [String] name  container name
+    # @param name [String]  container name
     #
     def delete(name)
       lxd.delete("/1.0/#{@inst}/#{name}")
@@ -421,7 +409,7 @@ module LXD
 
     # Get container state
     #
-    # @param [String] name container name
+    # @param name [String] container name
     #
     # @return [Hash] state
     #
@@ -433,8 +421,8 @@ module LXD
 
     # Change state of a container by name
     #
-    # @param [String] name container name
-    # @param [Hash] data new state description
+    # @param name [String] container name
+    # @param data [Hash] new state description
     #
     # Example:
     #   m.update_state 'my_container', action: 'start'
