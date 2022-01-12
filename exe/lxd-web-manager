@@ -1,0 +1,488 @@
+#!/usr/bin/env ruby
+# frozen_string_literal: true
+
+# require "#{File.dirname(__FILE__)}/lib/lxd-manager"
+require 'lxd-manager'
+require 'sinatra'
+require 'sinatra/namespace'
+require 'slim'
+
+# LOG = "/tmp/manage-site-#{ENV['USER']}.log".freeze
+MAX_WAIT_COUNT = 20 # 4 sec
+
+#
+# This class describes lxd commands.
+#
+class LXDCommands
+  #
+  # Contrsuctor
+  #
+  # @param      args  Hash of args:
+  #             - :mode  type of command (:add, :del, :list)
+  #
+  def initialize(args)
+    @mode = args[:mode]
+    @verbose = args[:verbose]
+    @debug = args[:debug]
+    @max_wait_count = args[:max_wait_count] || ::MAX_WAIT_COUNT
+  end
+
+  ##
+  ## Connect to LXD
+  ##
+  ## @return     nothing
+  ##
+  def start
+    @lxd = LXD::Manager.new(debug: @debug)
+  end
+
+  def start_container(name)
+    state = @lxd.container_state(name)
+    if state.nil? || state['status_code'] != 103
+      @lxd.update_state name, action: 'start'
+    end
+  end
+
+  def make_src(name)
+    @src = if name.to_s == ''
+             { type: 'none' }
+           else
+             img = @lxd.fingerprint_by_imagename(name) || name
+             { type: 'image', protocol: 'simplestreams', fingerprint: img }
+           end
+  end
+
+  ##
+  ## Return LXD::Container by its name
+  ##
+  ## @param      name  The name
+  ## @return     LXD::Container or nil
+  ##
+  def container_by_name(name)
+    state = @lxd.container_state(name)
+    return nil if state.nil?
+    # create container description by current state
+    LXD::Container.new(state)
+  end
+
+  ##
+  ## Gets the or creates a container
+  ##
+  ## @param      name  The containername
+  ##
+  def get_or_create(name, forward_only, profiles = [], image = nil)
+    if forward_only
+      container_by_name(name)
+    else
+      src = make_src(image)
+      # warn "src=#{src.inspect}; profiles=#{profiles}; image=#{image}"
+      cont = LXD::Container.new(
+        profiles: profiles,
+        name: name,
+        fingerprint: src[:fingerprint],
+        source: src
+      )
+      @lxd.create_lxd_vm(cont) ? container_by_name(name) : nil
+    end
+  end
+
+  ##
+  ## Creates configs for nginx/xinetd/...
+  ##
+  ## @param      host    The host
+  ## @param      cont    The container
+  ## @param      domain  The domain
+  ##
+  def create_configs(host, cont, domain = nil)
+    @lxd.create_configs(host, cont, domain)
+  end
+
+  ##
+  ## Gets the container ip.
+  ##
+  ## @param      name  The container name
+  ##
+  def get_container_ip(name)
+    st = nil
+    net = nil
+    count = @max_wait_count
+    loop do
+      st = @lxd.container_state(name)
+      net = st && st['metadata'] && st['metadata']['network']
+      break if net &&
+               net['eth0'] &&
+               !net['eth0']['addresses'].empty? &&
+               net['eth0']['addresses'].any? { |x| x['family'] == 'inet' }
+      sleep 0.2
+      count -= 1
+      return nil if count < 0
+    end
+    addr = net['eth0']['addresses'].select { |x| x['family'] == 'inet' }
+    addr.empty? ? nil : addr[0]['address']
+  end
+
+  ##
+  ## convert container hash to a description string
+  ##
+  ## @param      state  The state
+  ## @return     string with a description
+  ##
+  def describe_cont(cont)
+    return 'Unknown error' if cont.nil?
+
+    case cont[:code]
+    when '404'
+      'Container not found'
+    when '400'
+      'Operation is not allowed'
+    else
+      "Error code #{cont[:code]}"
+    end
+  end
+
+  ##
+  ## Adds a new container with specified name.
+  ##
+  ## @param      name [String] The container name
+  ## @param      opt  [Hash] Options:
+  ##             - `:nostart` = do not start it
+  ##             - `:nonet` = do not check the network
+  ##             - `:noconf` = do not create system configs
+  ##
+  def add(name, opt = {})
+    return [nil, 'Cannot create a container with empty name'] if name.nil?
+
+    l = LXDCommands.new(debug: false)
+    return [nil, 'Cannot connect to lxd'] if l.nil?
+
+    l.start
+    c = l.get_or_create(name, forward_only, profiles, image_name)
+    return [nil, "Cannot create container #{name} (#{l.err})"] if c.nil?
+
+    return [c, nil] if opt[:nostart]
+
+    l.start_container(name)
+    return [nil, 'Cannot start a container'] unless l
+
+    return [c, nil] if opt[:nonet]
+
+    local_ip = l.get_container_ip(name)
+    return [nil, 'Cannot find any ipv4 address on eth0'] if local_ip.nil?
+
+    c.local_ip = local_ip
+
+    return [c, nil] if opt[:noconf]
+
+    ok, status = l.create_configs(name, c, domain ? "#{name}.#{domain}" : name)
+    return [nil, describe_cont(status)] unless ok
+
+    res = system('sudo', 'systemctl', 'restart', 'xinetd')
+    # info "XINETD: #{res}\n"
+    res = system('/usr/local/sbin/nginx-modsite', '-b', '-e', "#{name}.conf")
+    # info "NGINX: #{res}\n"
+    res = system('/usr/local/bin/ddns-update.sh', name)
+    # info "DNS: #{res}\n"
+
+    [c, nil]
+  end
+
+  ##
+  ## Get a LXD last error
+  ##
+  ## @return     Last error value
+  ##
+  def err
+    @lxd.err
+  end
+end
+
+if false
+case mode
+when 'add'
+when 'list'
+  m = LXD::Manager.new(debug: false)
+  answer = m.containers
+  if opts[:csv]
+    x = answer.map do |a|
+      cont = m.container(a.split('/').last)
+      [a, cont ? cont.lxd['metadata'] : "Error: #{m.err}"]
+    end.to_a
+    print x.to_json
+  else
+    answer.each do |cont|
+      name = cont.split('/').last
+      print "#{name}:\n"
+      data = m.container(name).lxd['metadata']
+      print "  status: #{data['status']}\n  location: #{data['location']}\n"
+      print "  profiles: #{data['profiles']}\n"
+      print "  MAC: #{data['config']['volatile.eth0.hwaddr']}\n"
+    end
+  end
+when 'stop'
+  if name.nil?
+    print_help parser, subcommands
+    exit 1
+  end
+  m = LXD::Manager.new(debug: false)
+  m.update_state(name, action: 'stop')
+  count = 0
+  state = nil
+  cont = nil
+  loop do
+    sleep 0.2
+    cont = m.container_state(name)
+    info cont.inspect
+    state = cont && cont['metadata'] ? cont['metadata']['status'] : nil
+    break if state != 'Running'
+    count += 1
+    break if count > ::MAX_WAIT_COUNT
+  end
+  if count > ::MAX_WAIT_COUNT
+    print "Cannot stop #{name}. #{describe_cont(cont)}.\n"
+  elsif state.nil?
+    print "Cannot stop #{name}... #{describe_cont(cont)}.\n"
+  else
+    print "Stopped.\n"
+  end
+when 'start'
+  if name.nil?
+    print_help parser, subcommands
+    exit 1
+  end
+  m = LXD::Manager.new(debug: false)
+  m.update_state(name, action: 'start')
+  count = 0
+  state = nil
+  cont = nil
+  loop do
+    sleep 0.2
+    cont = m.container_state(name)
+    state = cont ? cont.lxd['metadata']['status'] : nil
+    break if state == 'Running'
+    count += 1
+    break if count > ::MAX_WAIT_COUNT
+  end
+  if count > ::MAX_WAIT_COUNT
+    print "Cannot start #{name}. #{describe_cont(cont)}.\n"
+  elsif state.nil?
+    print "Cannot start #{name}...#{describe_cont(cont)}.\n"
+  else
+    print "Started.\n"
+  end
+when 'del'
+  if name.nil?
+    print_help parser, subcommands
+    exit 1
+  end
+  m = LXD::Manager.new(debug: false)
+  ret = m.delete(name)
+  fail "Cannot delete a container: #{describe_cont(ret)}\n" if ret[:failed]
+
+  # disable site
+  res = system('/usr/local/sbin/nginx-modsite', '-b', '-d', "#{name}.conf")
+  info "NGINX: #{res}\n"
+
+  if m.delete_configs(name)
+    res = system('sudo', 'systemctl', 'restart', 'xinetd')
+    info "XINETD: #{res}\n"
+    print "Deleted\n"
+  else
+    print "Failed.\n"
+  end
+end
+end
+
+
+
+
+
+
+
+
+
+##############################
+###########################################
+##############################
+
+set :bind, '0.0.0.0'
+set :public_folder, settings.root + '/../static'
+set :views, settings.root + '/../templates'
+set :html, layout_engine: :slim
+
+##
+## Hash -> HTML
+##
+class HashVisualize
+  @@max_depth = 10
+
+  ##
+  ## Constructor
+  ##
+  def initialize
+    @out = ''
+  end
+
+  ##
+  ## convert hash into HTML table
+  ##
+  ## @param      data  Hash
+  ##
+  def html(data)
+    # "<table>\n#{self.hash2str('', data)}\n</table>"
+    "<ul id=\"myUL\">\n#{hash2str('', data)}\n</ul>"
+  end
+
+  ##
+  ## convert hash into HTML table
+  ##
+  ## @param      data  Hash
+  ##
+  def self.html(data)
+    x = HashVisualize.new
+    "<ul>\n#{x.hash2str('', data)}\n</ul>"
+  end
+
+  ##
+  ## convert hash to HTML string
+  ##
+  ## @param      name  [String] Key
+  ## @param      data  [Hash|String|Number|Bool|nil] Value
+  ## @param      count [Integer] Depth
+  ##
+  def hash2str(name, data, count = 0)
+    return if count > @@max_depth
+
+    if data.is_a? Hash
+      @out += "<li><span class=\"caret\">#{name}</span><ul class=\"nested\">\n" if count > 0
+      data.each do |key, value|
+        hash2str(key, value, count + 1)
+      end
+      @out += "</ul></li>\n" if count > 0
+    else
+      @out += "<li>#{name}: #{data}</li>\n"
+    end
+    @out
+  end
+
+  ##
+  ## convert hash to HTML string
+  ##
+  ## @param      name  [String] Key
+  ## @param      data  [Hash|String|Number|Bool|nil] Value
+  ## @param      count [Integer] Depth
+  ##
+  def hash2strTable(name, data, count = 0)
+    return if count > @@max_depth
+
+    if data.is_a? Hash
+      @out += "<tr><th class=\"table-depth-#{count}\">#{name}</th><td></td></tr>\n"
+      data.each do |key, value|
+        hash2strTable(key, value, count + 1)
+      end
+    else
+      @out += "<tr><th class=\"table-depth-#{count}\">#{name}</th><td>#{data}</td></tr>\n"
+    end
+    @out
+  end
+end
+
+helpers do
+  def base_url
+    @base_url ||= "#{request.env['rack.url_scheme']}://{request.env['HTTP_HOST']}"
+  end
+
+  def json_params
+    begin
+      JSON.parse(request.body.read)
+    rescue
+      halt 400, { message:'Invalid JSON' }.to_json
+    end
+  end
+
+  def containers
+    m = LXD::Manager.new(debug: false)
+    l = LXDCommands.new(debug: false)
+    l.start
+    answer = m.containers
+    answer.map do |a|
+      name = a.split('/').last
+      cont = m.container(name)
+      {
+        name: name,
+        data: cont ? cont.lxd['metadata'] : "Error: #{m.err}",
+        ip: l.get_container_ip(name)
+      }
+    end
+  end
+
+  # Using a method to access the book can save us
+  # from a lot of repetitions and can be used
+  # anywhere in the endpoints during the same
+  # request
+  def container(id)
+    m = LXD::Manager.new(debug: false)
+    # l = LXDCommands.new(debug: false)
+    # l.start
+    m.container(id)
+  end
+
+  # Since we used this code in both show and update
+  # extracting it to a method make it easier and
+  # less redundant
+  def halt_if_not_found!(cont)
+    halt(404, { message: 'Not Found' }.to_json) unless cont
+  end
+end
+
+get '/' do
+  redirect '/containers'
+end
+
+get '/containers' do
+  slim :containers, locals: { list: containers }
+end
+
+get '/containers/:name' do |name|
+  cont = container(name)
+  slim :container, locals: { cont: cont }
+end
+
+post '/containers/:name/:action' do |name, action|
+  m = LXD::Manager.new(debug: false)
+  res = m.update_state name, action: action
+  warn "--> #{res}"
+  redirect "/containers/#{name}"
+end
+
+namespace '/api/v1' do
+  before do
+    content_type 'application/json'
+  end
+
+  get '/containers/:id.json' do |id|
+    cont = container(id)
+    halt_if_not_found! cont
+    cont.to_json
+  end
+
+  # We switched from an if...else statement
+  # to using a guard clause which is much easier
+  # to read and makes the flow more logical
+  post '/containers' do
+    book = Book.new(json_params)
+    halt 422, serialize(book) unless book.save
+
+    response.headers['Location'] = "#{base_url}/api/v1/containers/#{book.id}"
+    status 201
+  end
+
+  # Just like for the create endpoint,
+  # we switched to a guard clause style to
+  # check if the book is not found or if
+  # the data is not valid
+  patch '/containers/:id' do |id|
+  end
+
+  delete '/containers/:id' do |id|
+  end
+end

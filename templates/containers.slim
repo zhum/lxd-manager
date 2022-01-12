@@ -1,0 +1,30 @@
+table.cont-list
+  /border="1"
+  tr
+    th Name
+    th Status
+    th IP
+    th MAC
+    th Location
+    th Profiles
+
+  - list.each do |l|
+    tr
+      - d = l[:data]
+      - list = d['expanded_devices'].select{ |k,v| v['type'] == 'nic' }
+      - mac = list.empty? ? 'none' : d['config']["volatile.#{list.values[0]['name']}.hwaddr"]
+      td
+        a href="/containers/#{l[:name]}"
+          = l[:name]
+      td
+        span class="state-#{d['status'].downcase}"
+          = d['status']
+      td
+        = l[:ip]
+      td
+        = mac
+      td
+        = d['location']
+      td
+        = d['profiles'].join(' / ')
+

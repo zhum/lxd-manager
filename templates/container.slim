@@ -1,0 +1,57 @@
+- data = cont.lxd['metadata']
+
+table.cont-list
+  tr
+    th Name
+    th Status
+    th Localtion
+    th Profiles
+  tr
+    td
+      = data['name']
+    td
+      span class="state-#{data['status'].downcase}"
+        = data['status']
+      ' 
+      '| 
+      form method="post" action="/containers/#{data['name']}/start" style="display: inline"
+        button.go-on type="submit" disabled=('yes' if data['status']=='Running')
+          ' on 
+        /a href="/containers/#{data['name']}/start" on
+      ' 
+      '| 
+      form method="post" action="/containers/#{data['name']}/stop" style="display: inline"
+        button.go-on type="submit" disabled=('yes' if data['status']!='Running')
+          ' off 
+      ' 
+      '| 
+      form method="post" action="/containers/#{data['name']}/freeze" style="display: inline"
+        button.go-on type="submit" disabled=('yes' if data['status']!='Running')
+          ' pause 
+      ' 
+      '| 
+      form method="post" action="/containers/#{data['name']}/unfreeze" style="display: inline"
+        button.go-on type="submit" disabled=('yes' if data['status']!='Frozen')
+          ' resume 
+    td
+      = data['location']
+    td
+      = data['profiles'].join('; ')
+
+ul
+  li
+    span.caret
+      = data['name']
+    ul.nested
+      == HashVisualize.new.hash2str(data['name'], cont.lxd['metadata'])
+
+javascript:
+  var toggler = document.getElementsByClassName("caret");
+  var i;
+
+  for (i = 0; i < toggler.length; i++) {
+    toggler[i].addEventListener("click", function() {
+      this.parentElement.querySelector(".nested").classList.toggle("active");
+      this.classList.toggle("caret-down");
+    });
+  }

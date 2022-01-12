@@ -1,0 +1,103 @@
+table.cont-list {
+  margin-left: auto;
+  margin-right: auto;
+  border: 1;
+
+}
+
+tr:nth-child(even) {
+  background-color: #f2f2f2;
+}
+
+th {
+  text-align: left;
+}
+
+.state-started {
+  color: lightgreen;
+}
+.state-stopped {
+  color: lightyellow;
+}
+.state-running {
+  color: green;
+}
+.state-stopped {
+  color: orange;
+}
+.state-cancelling {
+  color: red;
+}
+.state-pending{
+  color: yellow;  
+}
+.state-starting{
+  color: yellow;  
+}
+.state-stopping{
+  color: yellow;  
+}
+.state-aborting{
+  color: yellow;  
+}
+.state-freezing{
+  color: yellow;  
+}
+.state-frozen{
+  color: yellow;  
+}
+.state-thawed{
+  color: yellow;  
+}
+.state-error{
+  color: red;  
+}
+.state-success{
+  color: yellow;  
+}
+.state-failure{
+  color: red;  
+}
+.state-cancelled{
+  color: red;  
+}
+
+ /* Remove default bullets */
+ul, #myUL {
+  list-style-type: none;
+}
+
+/* Remove margins and padding from the parent ul */
+#myUL {
+  margin: 0;
+  padding: 0;
+}
+
+/* Style the caret/arrow */
+.caret {
+  cursor: pointer;
+  user-select: none; /* Prevent text selection */
+}
+
+/* Create the caret/arrow with a unicode, and style it */
+.caret::before {
+  content: "\25B6";
+  color: black;
+  display: inline-block;
+  margin-right: 6px;
+}
+
+/* Rotate the caret/arrow icon when clicked on (using JavaScript) */
+.caret-down::before {
+  transform: rotate(90deg);
+}
+
+/* Hide the nested list */
+.nested {
+  display: none;
+}
+
+/* Show the nested list when the user clicks on the caret/arrow (with JavaScript) */
+.active {
+  display: block;
+}
