@@ -7,6 +7,243 @@ require 'sinatra'
 require 'sinatra/namespace'
 require 'slim'
 
+##############################################################################
+
+set :bind, '0.0.0.0'
+set :public_folder, settings.root + '/../static'
+set :views, settings.root + '/../templates'
+set :html, layout_engine: :slim
+
+##
+## Hash -> HTML
+##
+class HashVisualize
+  @@max_depth = 10
+
+  ##
+  ## Constructor
+  ##
+  def initialize
+    @out = ''
+  end
+
+  ##
+  ## convert hash into HTML table
+  ##
+  ## @param      data  Hash
+  ##
+  def html(data)
+    # "<table>\n#{self.hash2str('', data)}\n</table>"
+    "<ul id=\"myUL\">\n#{hash2str('', data)}\n</ul>"
+  end
+
+  ##
+  ## convert hash into HTML table
+  ##
+  ## @param      data  Hash
+  ##
+  def self.html(data)
+    x = HashVisualize.new
+    "<ul>\n#{x.hash2str('', data)}\n</ul>"
+  end
+
+  ##
+  ## convert hash to HTML string
+  ##
+  ## @param      name  [String] Key
+  ## @param      data  [Hash|String|Number|Bool|nil] Value
+  ## @param      count [Integer] Depth
+  ##
+  def hash2str(name, data, count = 0)
+    return if count > @@max_depth
+
+    if data.is_a? Hash
+      @out += "<li><span class=\"caret\">#{name}</span><ul class=\"nested\">\n" if count > 0
+      data.each do |key, value|
+        hash2str(key, value, count + 1)
+      end
+      @out += "</ul></li>\n" if count > 0
+    else
+      @out += "<li>#{name}: #{data}</li>\n"
+    end
+    @out
+  end
+
+  ##
+  ## convert hash to HTML string
+  ##
+  ## @param      name  [String] Key
+  ## @param      data  [Hash|String|Number|Bool|nil] Value
+  ## @param      count [Integer] Depth
+  ##
+  def hash2strTable(name, data, count = 0)
+    return if count > @@max_depth
+
+    if data.is_a? Hash
+      @out += "<tr><th class=\"table-depth-#{count}\">#{name}</th><td></td></tr>\n"
+      data.each do |key, value|
+        hash2strTable(key, value, count + 1)
+      end
+    else
+      @out += "<tr><th class=\"table-depth-#{count}\">#{name}</th><td>#{data}</td></tr>\n"
+    end
+    @out
+  end
+end
+
+DEV_TYPES_ICONS = {
+  'nic' => 'fas fa-ethernet',
+  'disk' => 'fas fa-database'
+}.freeze
+
+def html_show_device name, dev
+  out = "<div><i class=\"#{DEV_TYPES_ICONS[dev['type']]}\">&nbsp;</i>#{name}:<ul>\n"
+  dev.reject { |k, _| k == 'type' || k == 'name' }.each do |k, v|
+    out += "<li> #{k} = #{v}</li>"
+  end
+  out += '</ul></div>'
+  out
+end
+
+helpers do
+  def base_url
+    @base_url ||=
+      "#{request.env['rack.url_scheme']}://{request.env['HTTP_HOST']}"
+  end
+
+  def json_params
+    begin
+      JSON.parse(request.body.read)
+    rescue
+      halt 400, { message: 'Invalid JSON' }.to_json
+    end
+  end
+
+  def get_ip(net, type)
+    if net.nil? || net.empty?
+      []
+    else
+      net.map do |iface, data|
+        [iface, data['addresses'].select { |x| x['family'] == type }
+                                 .map { |x| x['address'] }]
+      end
+    end
+  end
+
+  def containers
+    m = LXD::Manager.new(debug: false)
+    answer = m.containers
+    answer.map do |a|
+      name = a.split('/').last
+      cont = m.container(name)
+      net = m.container_state(name)['metadata']['network']
+      {
+        name: name,
+        data: cont ? cont.lxd['metadata'] : "Error: #{m.err}",
+        ip4: get_ip(net, 'inet'),
+        ip6: get_ip(net, 'inet6')
+      }
+    end
+  end
+
+  # Using a method to access the book can save us
+  # from a lot of repetitions and can be used
+  # anywhere in the endpoints during the same
+  # request
+  def container(id)
+    m = LXD::Manager.new(debug: false)
+    m.container(id)
+  end
+
+  def profiles
+    m = LXD::Manager.new(debug: false)
+    answer = m.profiles
+    Hash[answer.map do |a|
+      name = a.split('/').last
+      [name, m.profile(name)]
+    end]
+  end
+
+  def profile(name)
+    m = LXD::Manager.new(debug: false)
+    m.profile(name)
+  end
+
+  # Since we used this code in both show and update
+  # extracting it to a method make it easier and
+  # less redundant
+  def halt_if_not_found!(cont)
+    halt(404, { message: 'Not Found' }.to_json) unless cont
+  end
+end
+
+get '/?' do
+  redirect '/containers'
+end
+
+get '/containers/?' do
+  slim :containers, locals: { list: containers }
+end
+
+get '/profiles/?' do
+  slim :profiles, locals: { list: profiles }
+end
+
+get '/profiles/:name/?' do |name|
+  slim :profile, locals: { prof: profile(name) }
+end
+
+get '/containers/:name/?' do |name|
+  cont = container(name)
+  slim :container, locals: { cont: cont }
+end
+
+post '/containers/:name/:action/?' do |name, action|
+  m = LXD::Manager.new
+  res = m.update_state name, action: action
+  warn "--> #{res}"
+  if params[:redir_to_index]
+    redirect '/containers'
+  else
+    redirect "/containers/#{name}"
+  end
+end
+
+namespace '/api/v1' do
+  before do
+    content_type 'application/json'
+  end
+
+  get '/containers/:id.json' do |id|
+    cont = container(id)
+    halt_if_not_found! cont
+    cont.to_json
+  end
+
+  # We switched from an if...else statement
+  # to using a guard clause which is much easier
+  # to read and makes the flow more logical
+  post '/containers' do
+    book = Book.new(json_params)
+    halt 422, serialize(book) unless book.save
+
+    response.headers['Location'] = "#{base_url}/api/v1/containers/#{book.id}"
+    status 201
+  end
+
+  # Just like for the create endpoint,
+  # we switched to a guard clause style to
+  # check if the book is not found or if
+  # the data is not valid
+  patch '/containers/:id' do |id|
+  end
+
+  delete '/containers/:id' do |id|
+  end
+end
+
+
+__END__
 # LOG = "/tmp/manage-site-#{ENV['USER']}.log".freeze
 MAX_WAIT_COUNT = 20 # 4 sec
 
@@ -290,199 +527,4 @@ when 'del'
     print "Failed.\n"
   end
 end
-end
-
-
-
-
-
-
-
-
-
-##############################
-###########################################
-##############################
-
-set :bind, '0.0.0.0'
-set :public_folder, settings.root + '/../static'
-set :views, settings.root + '/../templates'
-set :html, layout_engine: :slim
-
-##
-## Hash -> HTML
-##
-class HashVisualize
-  @@max_depth = 10
-
-  ##
-  ## Constructor
-  ##
-  def initialize
-    @out = ''
-  end
-
-  ##
-  ## convert hash into HTML table
-  ##
-  ## @param      data  Hash
-  ##
-  def html(data)
-    # "<table>\n#{self.hash2str('', data)}\n</table>"
-    "<ul id=\"myUL\">\n#{hash2str('', data)}\n</ul>"
-  end
-
-  ##
-  ## convert hash into HTML table
-  ##
-  ## @param      data  Hash
-  ##
-  def self.html(data)
-    x = HashVisualize.new
-    "<ul>\n#{x.hash2str('', data)}\n</ul>"
-  end
-
-  ##
-  ## convert hash to HTML string
-  ##
-  ## @param      name  [String] Key
-  ## @param      data  [Hash|String|Number|Bool|nil] Value
-  ## @param      count [Integer] Depth
-  ##
-  def hash2str(name, data, count = 0)
-    return if count > @@max_depth
-
-    if data.is_a? Hash
-      @out += "<li><span class=\"caret\">#{name}</span><ul class=\"nested\">\n" if count > 0
-      data.each do |key, value|
-        hash2str(key, value, count + 1)
-      end
-      @out += "</ul></li>\n" if count > 0
-    else
-      @out += "<li>#{name}: #{data}</li>\n"
-    end
-    @out
-  end
-
-  ##
-  ## convert hash to HTML string
-  ##
-  ## @param      name  [String] Key
-  ## @param      data  [Hash|String|Number|Bool|nil] Value
-  ## @param      count [Integer] Depth
-  ##
-  def hash2strTable(name, data, count = 0)
-    return if count > @@max_depth
-
-    if data.is_a? Hash
-      @out += "<tr><th class=\"table-depth-#{count}\">#{name}</th><td></td></tr>\n"
-      data.each do |key, value|
-        hash2strTable(key, value, count + 1)
-      end
-    else
-      @out += "<tr><th class=\"table-depth-#{count}\">#{name}</th><td>#{data}</td></tr>\n"
-    end
-    @out
-  end
-end
-
-helpers do
-  def base_url
-    @base_url ||= "#{request.env['rack.url_scheme']}://{request.env['HTTP_HOST']}"
-  end
-
-  def json_params
-    begin
-      JSON.parse(request.body.read)
-    rescue
-      halt 400, { message:'Invalid JSON' }.to_json
-    end
-  end
-
-  def containers
-    m = LXD::Manager.new(debug: false)
-    l = LXDCommands.new(debug: false)
-    l.start
-    answer = m.containers
-    answer.map do |a|
-      name = a.split('/').last
-      cont = m.container(name)
-      {
-        name: name,
-        data: cont ? cont.lxd['metadata'] : "Error: #{m.err}",
-        ip: l.get_container_ip(name)
-      }
-    end
-  end
-
-  # Using a method to access the book can save us
-  # from a lot of repetitions and can be used
-  # anywhere in the endpoints during the same
-  # request
-  def container(id)
-    m = LXD::Manager.new(debug: false)
-    # l = LXDCommands.new(debug: false)
-    # l.start
-    m.container(id)
-  end
-
-  # Since we used this code in both show and update
-  # extracting it to a method make it easier and
-  # less redundant
-  def halt_if_not_found!(cont)
-    halt(404, { message: 'Not Found' }.to_json) unless cont
-  end
-end
-
-get '/' do
-  redirect '/containers'
-end
-
-get '/containers' do
-  slim :containers, locals: { list: containers }
-end
-
-get '/containers/:name' do |name|
-  cont = container(name)
-  slim :container, locals: { cont: cont }
-end
-
-post '/containers/:name/:action' do |name, action|
-  m = LXD::Manager.new(debug: false)
-  res = m.update_state name, action: action
-  warn "--> #{res}"
-  redirect "/containers/#{name}"
-end
-
-namespace '/api/v1' do
-  before do
-    content_type 'application/json'
-  end
-
-  get '/containers/:id.json' do |id|
-    cont = container(id)
-    halt_if_not_found! cont
-    cont.to_json
-  end
-
-  # We switched from an if...else statement
-  # to using a guard clause which is much easier
-  # to read and makes the flow more logical
-  post '/containers' do
-    book = Book.new(json_params)
-    halt 422, serialize(book) unless book.save
-
-    response.headers['Location'] = "#{base_url}/api/v1/containers/#{book.id}"
-    status 201
-  end
-
-  # Just like for the create endpoint,
-  # we switched to a guard clause style to
-  # check if the book is not found or if
-  # the data is not valid
-  patch '/containers/:id' do |id|
-  end
-
-  delete '/containers/:id' do |id|
-  end
 end

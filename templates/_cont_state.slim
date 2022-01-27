@@ -1,0 +1,27 @@
+- index ||= false
+- postfix = index ? '?redir_to_index=1' : ''
+
+td
+  span class="state-#{status.downcase}"
+    = status
+td
+  ' 
+  '| 
+  form method="post" action="/containers/#{name}/start#{postfix}" style="display: inline"
+    button.go-on type="submit" disabled=('yes' if status == 'Running')
+      ' on 
+  ' 
+  '| 
+  form method="post" action="/containers/#{name}/stop#{postfix}" style="display: inline"
+    button.go-on type="submit" disabled=('yes' if status != 'Running')
+      ' off 
+  ' 
+  '| 
+  form method="post" action="/containers/#{name}/freeze#{postfix}" style="display: inline"
+    button.go-on type="submit" disabled=('yes' if status != 'Running')
+      ' pause 
+  ' 
+  '| 
+  form method="post" action="/containers/#{name}/unfreeze#{postfix}" style="display: inline"
+    button.go-on type="submit" disabled=('yes' if status != 'Frozen')
+      ' resume 

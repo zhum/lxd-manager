@@ -1,4 +1,4 @@
-table.cont-list {
+.cont-list {
   margin-left: auto;
   margin-right: auto;
   border: 1;
@@ -13,11 +13,23 @@ th {
   text-align: left;
 }
 
+.green-select:hover {
+  background-color:#90f850;
+}
+
+.pad-1 {
+  padding: 1px 1px 1px 1px;
+}
+
+.marg-1 {
+  margin: 1px 1px 1px 1px;
+}
+
 .state-started {
   color: lightgreen;
 }
 .state-stopped {
-  color: lightyellow;
+  color: magenta;
 }
 .state-running {
   color: green;
@@ -29,31 +41,31 @@ th {
   color: red;
 }
 .state-pending{
-  color: yellow;  
+  color: orange;  
 }
 .state-starting{
-  color: yellow;  
+  color: orange;  
 }
 .state-stopping{
-  color: yellow;  
+  color: orange;  
 }
 .state-aborting{
-  color: yellow;  
+  color: orange;  
 }
 .state-freezing{
-  color: yellow;  
+  color: orange;  
 }
 .state-frozen{
-  color: yellow;  
+  color: orange;  
 }
 .state-thawed{
-  color: yellow;  
+  color: orange;  
 }
 .state-error{
   color: red;  
 }
 .state-success{
-  color: yellow;  
+  color: orange;  
 }
 .state-failure{
   color: red;  

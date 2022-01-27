@@ -1,0 +1,97 @@
+link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.13.0/css/all.min.css" rel="stylesheet"
+
+== slim :_nav, layout: false
+
+h1
+  = prof['name']
+p
+  - desc = prof['description']
+  | Description: #{desc.empty? ? '-' : desc}
+p
+  | Used by:
+  ul
+    - prof['used_by'].sort.each do |l|
+      li
+        - lname = l.split('/').last
+        a href="/containers/#{lname}"
+          = lname
+h3 Config
+table.cont-list width="90%"
+  tr
+    th width="10%"
+    th
+
+  - prof['config'].each do | k, v |
+    tr
+      td
+        = k
+      td
+        = v
+
+h3 Devices
+table.cont-list width="90%"
+  tr
+    th width="10%"
+    th
+
+  - prof['devices'].sort{|a,b| a[0]<=>b[0]}.each do |k,v|
+    tr
+      td
+        = k
+      td
+        ul.pad-1.marg-1
+          li
+            == html_show_device(k,v)
+
+h3 Attributes
+table.cont-list width="90%"
+  tr
+    th Name
+    th Type
+    th Def
+    th Live upd
+    th Cond
+    th Description
+
+  - LXD::Manager.profiles_attrs.each do |k,v|
+    / name => type, defaults, live update, condition, description
+    - if !prof['config'].has_key?(k)
+      tr
+        td
+          = k
+        td
+          = v[0]
+        td
+          = v[1]
+        td
+          = v[2]
+        td
+          = v[3]
+        td
+          = v[4]
+        td
+          = v[5]
+
+
+  /- list.each do |name, data|
+    tr.green-select
+      td
+        a href="/profiles/#{name}"
+          = name
+      td
+        ul.pad-1.marg-1
+          - data['devices'].sort{|a,b| a[0]<=>b[0]}.each do |k,v|
+            li
+              == html_show_device(k,v)
+              /= k
+               |
+               = v
+               /ul
+                - v.each do |a,b|
+                  li
+                    = a
+                    | =
+                    = b
+
+/
+

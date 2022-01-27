@@ -1,42 +1,26 @@
 - data = cont.lxd['metadata']
 
+== slim :_nav, layout: false
+
 table.cont-list
   tr
     th Name
     th Status
+    th Action
     th Localtion
     th Profiles
   tr
     td
       = data['name']
-    td
-      span class="state-#{data['status'].downcase}"
-        = data['status']
-      ' 
-      '| 
-      form method="post" action="/containers/#{data['name']}/start" style="display: inline"
-        button.go-on type="submit" disabled=('yes' if data['status']=='Running')
-          ' on 
-        /a href="/containers/#{data['name']}/start" on
-      ' 
-      '| 
-      form method="post" action="/containers/#{data['name']}/stop" style="display: inline"
-        button.go-on type="submit" disabled=('yes' if data['status']!='Running')
-          ' off 
-      ' 
-      '| 
-      form method="post" action="/containers/#{data['name']}/freeze" style="display: inline"
-        button.go-on type="submit" disabled=('yes' if data['status']!='Running')
-          ' pause 
-      ' 
-      '| 
-      form method="post" action="/containers/#{data['name']}/unfreeze" style="display: inline"
-        button.go-on type="submit" disabled=('yes' if data['status']!='Frozen')
-          ' resume 
+    == slim :_cont_state, locals: {name: data['name'], status: data['status']}, layout: false
     td
       = data['location']
     td
-      = data['profiles'].join('; ')
+      - data['profiles'].each do |p|
+        a href="/profiles/#{p}"
+          = p
+        ' 
+        '| 
 
 ul
   li

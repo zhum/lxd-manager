@@ -1,30 +1,52 @@
+== slim :_nav, layout: false
+
 table.cont-list
   /border="1"
   tr
     th Name
     th Status
-    th IP
+    th Action
+    th IPv4
+    th IPv6
     th MAC
     th Location
     th Profiles
 
   - list.each do |l|
-    tr
+    tr.green-select
       - d = l[:data]
       - list = d['expanded_devices'].select{ |k,v| v['type'] == 'nic' }
       - mac = list.empty? ? 'none' : d['config']["volatile.#{list.values[0]['name']}.hwaddr"]
       td
         a href="/containers/#{l[:name]}"
           = l[:name]
+      == slim :_cont_state, locals: {name: l[:name], status: d['status'], index: true}, layout: false
       td
-        span class="state-#{d['status'].downcase}"
-          = d['status']
+        ul.pad-1.marg-1
+          - l[:ip4].select{|x| x[0]!='lo'}.sort{|a,b| a[0]<=>b[0]}.each do |x|
+            li
+              = x[0]
+              ul
+                - x[1].each do |d|
+                  li
+                    = d
       td
-        = l[:ip]
+        ul.pad-1.marg-1
+          - l[:ip6].select{|x| x[0]!='lo'}.sort{|a,b| a[0]<=>b[0]}.each do |x|
+            li
+              = x[0]
+              ul
+                - x[1].each do |d|
+                  li
+                    = d
       td
         = mac
       td
         = d['location']
       td
-        = d['profiles'].join(' / ')
+        - d['profiles'].each do |p|
+          a href="/profiles/#{p}"
+            = p
+          ' 
+          '| 
 
